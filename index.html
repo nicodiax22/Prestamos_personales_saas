@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Credito Simple | Gestion de Prestamos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CS</div>
+          <div>
+            <strong>Credito Simple</strong>
+            <span>Prestamos y cobranzas</span>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-view="dashboard" type="button">Dashboard</button>
+          <button class="nav-item" data-view="clientes" type="button">Clientes</button>
+          <button class="nav-item" data-view="prestamos" type="button">Prestamos</button>
+          <button class="nav-item" data-view="cobranzas" type="button">Cobranzas</button>
+        </nav>
+
+        <div class="sidebar-panel">
+          <span>Regla base</span>
+          <strong>100% interes</strong>
+          <p>El sistema duplica el capital y lo divide en cuotas mensuales. Se puede editar por caso.</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Demo comercial</p>
+            <h1>Gestion de prestamos personales</h1>
+          </div>
+          <button class="primary-button" type="button" id="openLoan">Nuevo prestamo</button>
+        </header>
+
+        <section class="mobile-tabs">
+          <button class="tab active" data-view="dashboard" type="button">Inicio</button>
+          <button class="tab" data-view="clientes" type="button">Clientes</button>
+          <button class="tab" data-view="prestamos" type="button">Prestamos</button>
+          <button class="tab" data-view="cobranzas" type="button">Cobros</button>
+        </section>
+
+        <section class="view active" id="dashboard">
+          <div class="metrics-grid" id="metrics"></div>
+
+          <div class="content-grid">
+            <section class="panel wide">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Hoy</p>
+                  <h2>Cuotas por cobrar</h2>
+                </div>
+                <button class="ghost-button" type="button" data-view="cobranzas">Ver cobros</button>
+              </div>
+              <div class="due-list" id="dueList"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <p class="eyebrow">Riesgo</p>
+                  <h2>Clientes con atraso</h2>
+                </div>
+              </div>
+              <div class="risk-list" id="riskList"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="clientes">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Base inicial</p>
+                <h2>20 clientes cargados</h2>
+              </div>
+              <input class="search" id="clientSearch" type="search" placeholder="Buscar cliente, DNI o telefono" />
+            </div>
+            <div class="client-grid" id="clientGrid"></div>
+          </div>
+        </section>
+
+        <section class="view" id="prestamos">
+          <div class="loan-layout">
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <p class="eyebrow">Simulador</p>
+                  <h2>Nuevo prestamo</h2>
+                </div>
+              </div>
+              <form class="loan-form" id="loanForm">
+                <label>
+                  Cliente
+                  <select id="loanClient"></select>
+                </label>
+                <label>
+                  Monto prestado
+                  <input id="loanAmount" type="number" min="1000" step="1000" value="100000" />
+                </label>
+                <label>
+                  Interes aplicado
+                  <input id="loanRate" type="number" min="0" step="5" value="100" />
+                </label>
+                <label>
+                  Cantidad de cuotas mensuales
+                  <input id="loanInstallments" type="number" min="1" max="24" value="4" />
+                </label>
+                <label>
+                  Primer vencimiento
+                  <input id="loanFirstDue" type="date" />
+                </label>
+              </form>
+            </section>
+
+            <section class="panel result-panel">
+              <p class="eyebrow">Resultado</p>
+              <h2 id="resultTotal">$0</h2>
+              <p class="muted">Total a devolver</p>
+              <div class="result-row">
+                <span>Valor de cuota</span>
+                <strong id="resultInstallment">$0</strong>
+              </div>
+              <div class="result-row">
+                <span>Ganancia estimada</span>
+                <strong id="resultProfit">$0</strong>
+              </div>
+              <div class="schedule" id="schedule"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="cobranzas">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Operacion diaria</p>
+                <h2>Registro de cobranzas</h2>
+              </div>
+              <button class="primary-button small" type="button">Registrar pago</button>
+            </div>
+            <div class="collections-table" id="collectionsTable"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
