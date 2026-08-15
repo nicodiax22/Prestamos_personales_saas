@@ -298,6 +298,14 @@ h2 {
   font-weight: 700;
 }
 
+.form-success {
+  min-height: 18px;
+  margin: 0;
+  color: var(--good);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .view {
   display: none;
 }
@@ -367,6 +375,7 @@ h2 {
 .client-grid,
 .schedule,
 .collections-table,
+.loan-history,
 .role-list {
   display: grid;
   gap: 10px;
@@ -377,6 +386,7 @@ h2 {
 .client-card,
 .collection-row,
 .schedule-row,
+.loan-history-row,
 .role-card {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -540,6 +550,22 @@ h2 {
 
 .collect-button {
   justify-self: end;
+}
+
+.loan-history-panel {
+  margin-top: 14px;
+}
+
+.loan-history-row {
+  display: grid;
+  grid-template-columns: 1.3fr 0.7fr 0.7fr 0.7fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.loan-history-row.new-loan {
+  border-color: rgba(15, 118, 110, 0.38);
+  background: #f3fbf9;
 }
 
 .empty-state,
@@ -727,7 +753,8 @@ h2 {
   }
 
   .due-item,
-  .collection-row {
+  .collection-row,
+  .loan-history-row {
     grid-template-columns: 1fr;
     align-items: start;
   }

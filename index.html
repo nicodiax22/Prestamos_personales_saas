@@ -127,7 +127,7 @@
             <section class="panel">
               <div class="panel-header compact">
                 <div>
-                  <p class="eyebrow">Simulador</p>
+                  <p class="eyebrow">Registro</p>
                   <h2>Nuevo prestamo</h2>
                 </div>
               </div>
@@ -160,7 +160,8 @@
                     <option value="atrasado">Atrasado</option>
                   </select>
                 </label>
-                <button class="primary-button" type="submit">Crear prestamo demo</button>
+                <p class="form-success" id="loanSuccess" aria-live="polite"></p>
+                <button class="primary-button" type="submit">Registrar prestamo</button>
               </form>
             </section>
 
@@ -179,6 +180,17 @@
               <div class="schedule" id="schedule"></div>
             </section>
           </div>
+
+          <section class="panel loan-history-panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Historial</p>
+                <h2>Prestamos registrados</h2>
+              </div>
+              <button class="ghost-button small" type="button" data-view="cobranzas">Ver cobranzas</button>
+            </div>
+            <div class="loan-history" id="loanHistory"></div>
+          </section>
         </section>
 
         <section class="view" id="cobranzas">

@@ -62,7 +62,15 @@ const statusClass = {
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
-    return JSON.parse(saved);
+    const parsed = JSON.parse(saved);
+    return {
+      role: null,
+      programEnabled: true,
+      clients: seedClients,
+      payments: [],
+      lastLoanId: null,
+      ...parsed,
+    };
   }
 
   return {
@@ -70,6 +78,7 @@ function loadState() {
     programEnabled: true,
     clients: seedClients,
     payments: [],
+    lastLoanId: null,
   };
 }
 
@@ -100,6 +109,18 @@ function pendingAmount(client) {
 
 function paidAmount(client) {
   return installmentValue(client) * client.paid;
+}
+
+function formatDate(value) {
+  if (!value) {
+    return "Sin fecha";
+  }
+
+  return new Date(`${value}T00:00:00`).toLocaleDateString("es-AR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function canOperate() {
@@ -281,6 +302,40 @@ function renderCollections() {
     : `<div class="locked-state">Programa apagado. El duenio no puede registrar cobros hasta que Nicolas lo active.</div>`;
 }
 
+function renderLoanHistory() {
+  const rows = activeClients()
+    .map((client) => {
+      const nextInstallment = Math.min(client.paid + 1, client.installments);
+      const highlight = state.lastLoanId === client.id ? " new-loan" : "";
+
+      return `
+        <article class="loan-history-row${highlight}">
+          <div>
+            <div class="item-title">${client.name}</div>
+            <div class="item-subtitle">Vence dia ${client.dueDay} · primera cuota ${formatDate(client.firstDue)}</div>
+          </div>
+          <div>
+            <div class="item-subtitle">Prestado</div>
+            <strong>${currency.format(client.amount)}</strong>
+          </div>
+          <div>
+            <div class="item-subtitle">A devolver</div>
+            <strong>${currency.format(totalToReturn(client))}</strong>
+          </div>
+          <div>
+            <div class="item-subtitle">Cuotas</div>
+            <strong>${client.paid}/${client.installments}</strong>
+            <span class="item-subtitle">proxima ${nextInstallment}/${client.installments}</span>
+          </div>
+          <span class="status ${statusClass[client.status]}">${client.status}</span>
+        </article>
+      `;
+    })
+    .join("");
+
+  document.querySelector("#loanHistory").innerHTML = rows;
+}
+
 function setDefaultDate() {
   const date = new Date();
   date.setMonth(date.getMonth() + 1);
@@ -328,22 +383,31 @@ function createLoan(event) {
   }
 
   const selectedClient = activeClients().find((client) => client.id === Number(document.querySelector("#loanClient").value));
+  if (!selectedClient) {
+    return;
+  }
+
   const firstDue = document.querySelector("#loanFirstDue").value;
+  const newLoanId = Date.now();
   const newClient = {
     ...selectedClient,
-    id: Date.now(),
+    id: newLoanId,
     amount: Number(document.querySelector("#loanAmount").value) || 0,
     rate: Number(document.querySelector("#loanRate").value) || 100,
     installments: Number(document.querySelector("#loanInstallments").value) || 1,
     paid: 0,
     status: document.querySelector("#loanStatus").value,
+    firstDue,
     dueDay: firstDue ? new Date(`${firstDue}T00:00:00`).getDate() : 15,
+    createdAt: new Date().toISOString(),
   };
 
   state.clients = [newClient, ...state.clients];
+  state.lastLoanId = newLoanId;
   saveState();
   renderAll();
-  switchView("cobranzas");
+  document.querySelector("#loanSuccess").textContent = `Prestamo registrado para ${newClient.name}. Ya aparece en historial y cobranzas.`;
+  switchView("prestamos");
 }
 
 function collectInstallment(clientId) {
@@ -373,6 +437,7 @@ function resetDemo() {
   state.clients = seedClients;
   state.payments = [];
   state.programEnabled = true;
+  state.lastLoanId = null;
   saveState();
   renderAll();
 }
@@ -399,6 +464,7 @@ function renderAll() {
   renderRiskList();
   renderClients();
   renderCollections();
+  renderLoanHistory();
   populateLoanClients();
   updateSimulator();
 }
