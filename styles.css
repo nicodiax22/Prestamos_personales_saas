@@ -129,6 +129,16 @@ select {
   margin-bottom: 18px;
 }
 
+.topbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.mobile-user-button {
+  display: none;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent);
@@ -185,8 +195,56 @@ h2 {
   color: var(--ink);
 }
 
+.ghost-button.dark {
+  width: 100%;
+  margin-top: 8px;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.system-state {
+  margin: 8px 0 0;
+  color: var(--good);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.danger-text {
+  color: var(--danger);
+}
+
 .mobile-tabs {
   display: none;
+}
+
+.access-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.role-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .view {
@@ -257,7 +315,8 @@ h2 {
 .risk-list,
 .client-grid,
 .schedule,
-.collections-table {
+.collections-table,
+.role-list {
   display: grid;
   gap: 10px;
 }
@@ -266,7 +325,8 @@ h2 {
 .risk-item,
 .client-card,
 .collection-row,
-.schedule-row {
+.schedule-row,
+.role-card {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 13px;
@@ -359,6 +419,20 @@ h2 {
   font-size: 13px;
 }
 
+.progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eef2;
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
 .loan-layout {
   display: grid;
   grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
@@ -409,6 +483,105 @@ h2 {
   grid-template-columns: auto 1fr auto;
 }
 
+.collection-row {
+  grid-template-columns: 1.2fr 0.85fr 0.55fr auto auto;
+}
+
+.collect-button {
+  justify-self: end;
+}
+
+.empty-state,
+.locked-state,
+.admin-note {
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  background: #f8fafb;
+}
+
+.locked-state {
+  border-color: #efb4af;
+  color: var(--danger);
+  background: #fff7f6;
+}
+
+.system-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.1fr);
+  gap: 14px;
+}
+
+.toggle-box {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafb;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  width: 56px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.switch span {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: #cbd5dd;
+  transition: background 160ms ease;
+}
+
+.switch span::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.18);
+  transition: transform 160ms ease;
+}
+
+.switch input:checked + span {
+  background: var(--accent);
+}
+
+.switch input:checked + span::after {
+  transform: translateX(24px);
+}
+
+.role-card {
+  display: grid;
+  gap: 5px;
+}
+
+.role-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 @media (max-width: 1120px) {
   .metrics-grid,
   .client-grid {
@@ -416,7 +589,8 @@ h2 {
   }
 
   .content-grid,
-  .loan-layout {
+  .loan-layout,
+  .system-layout {
     grid-template-columns: 1fr;
   }
 }
@@ -439,8 +613,17 @@ h2 {
     align-items: flex-start;
   }
 
+  .topbar-actions {
+    width: 100%;
+  }
+
   .topbar .primary-button {
     display: none;
+  }
+
+  .mobile-user-button {
+    display: inline-flex;
+    align-items: center;
   }
 
   h1 {
@@ -454,7 +637,7 @@ h2 {
     bottom: 12px;
     z-index: 10;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     gap: 6px;
     padding: 7px;
     border: 1px solid var(--line);
@@ -496,6 +679,23 @@ h2 {
   .collection-row {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+
+  .collect-button {
+    justify-self: stretch;
+  }
+
+  .access-panel,
+  .toggle-box {
+    display: grid;
+  }
+
+  .role-buttons {
+    justify-content: stretch;
+  }
+
+  .role-buttons button {
+    width: 100%;
   }
 
   .result-panel h2 {

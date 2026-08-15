@@ -25,12 +25,14 @@
           <button class="nav-item" data-view="clientes" type="button">Clientes</button>
           <button class="nav-item" data-view="prestamos" type="button">Prestamos</button>
           <button class="nav-item" data-view="cobranzas" type="button">Cobranzas</button>
+          <button class="nav-item super-only" data-view="sistema" type="button">Sistema</button>
         </nav>
 
         <div class="sidebar-panel">
-          <span>Regla base</span>
-          <strong>100% interes</strong>
-          <p>El sistema duplica el capital y lo divide en cuotas mensuales. Se puede editar por caso.</p>
+          <span>Sesion activa</span>
+          <strong id="roleName">Duenio admin</strong>
+          <p id="roleDescription">Puede cargar prestamos, registrar cobros y ver toda la gestion.</p>
+          <button class="ghost-button dark" type="button" id="switchUser">Cambiar usuario</button>
         </div>
       </aside>
 
@@ -39,8 +41,12 @@
           <div>
             <p class="eyebrow">Demo comercial</p>
             <h1>Gestion de prestamos personales</h1>
+            <p class="system-state" id="systemState">Programa activo</p>
           </div>
-          <button class="primary-button" type="button" id="openLoan">Nuevo prestamo</button>
+          <div class="topbar-actions">
+            <button class="ghost-button mobile-user-button" type="button" id="switchUserTop">Cambiar usuario</button>
+            <button class="primary-button" type="button" id="openLoan">Nuevo prestamo</button>
+          </div>
         </header>
 
         <section class="mobile-tabs">
@@ -48,6 +54,19 @@
           <button class="tab" data-view="clientes" type="button">Clientes</button>
           <button class="tab" data-view="prestamos" type="button">Prestamos</button>
           <button class="tab" data-view="cobranzas" type="button">Cobros</button>
+          <button class="tab super-only" data-view="sistema" type="button">Sistema</button>
+        </section>
+
+        <section class="access-panel" id="accessPanel">
+          <div>
+            <p class="eyebrow">Accesos de prueba</p>
+            <h2>Elegir perfil</h2>
+            <p class="muted">Esto simula la estructura real: vos como administrador del programa y el cliente como duenio administrador.</p>
+          </div>
+          <div class="role-buttons">
+            <button class="primary-button" type="button" data-role="superadmin">Entrar como Nicolas</button>
+            <button class="ghost-button" type="button" data-role="owner">Entrar como duenio</button>
+          </div>
         </section>
 
         <section class="view active" id="dashboard">
@@ -82,7 +101,7 @@
             <div class="panel-header">
               <div>
                 <p class="eyebrow">Base inicial</p>
-                <h2>20 clientes cargados</h2>
+                <h2 id="clientsTitle">20 clientes cargados</h2>
               </div>
               <input class="search" id="clientSearch" type="search" placeholder="Buscar cliente, DNI o telefono" />
             </div>
@@ -120,6 +139,15 @@
                   Primer vencimiento
                   <input id="loanFirstDue" type="date" />
                 </label>
+                <label>
+                  Estado inicial
+                  <select id="loanStatus">
+                    <option value="al dia">Al dia</option>
+                    <option value="vence hoy">Vence hoy</option>
+                    <option value="atrasado">Atrasado</option>
+                  </select>
+                </label>
+                <button class="primary-button" type="submit">Crear prestamo demo</button>
               </form>
             </section>
 
@@ -147,9 +175,52 @@
                 <p class="eyebrow">Operacion diaria</p>
                 <h2>Registro de cobranzas</h2>
               </div>
-              <button class="primary-button small" type="button">Registrar pago</button>
+              <button class="ghost-button small" type="button" id="resetDemo">Reiniciar demo</button>
             </div>
             <div class="collections-table" id="collectionsTable"></div>
+          </div>
+        </section>
+
+        <section class="view" id="sistema">
+          <div class="system-layout">
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <p class="eyebrow">Administrador del programa</p>
+                  <h2>Control de acceso general</h2>
+                </div>
+              </div>
+              <div class="toggle-box">
+                <div>
+                  <strong>Estado del programa</strong>
+                  <p class="muted">Si el cliente no paga, desde este perfil se puede apagar el acceso operativo.</p>
+                </div>
+                <label class="switch">
+                  <input id="programEnabled" type="checkbox" checked />
+                  <span></span>
+                </label>
+              </div>
+              <div class="admin-note" id="adminNote"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <p class="eyebrow">Roles</p>
+                  <h2>Perfiles necesarios</h2>
+                </div>
+              </div>
+              <div class="role-list">
+                <article class="role-card">
+                  <strong>Nicolas · Admin sistema</strong>
+                  <span>Puede habilitar/apagar el programa, ver cuentas y administrar el servicio.</span>
+                </article>
+                <article class="role-card">
+                  <strong>Duenio · Admin negocio</strong>
+                  <span>Puede cargar clientes, prestamos, cobros y consultar toda la gestion.</span>
+                </article>
+              </div>
+            </section>
           </div>
         </section>
       </main>

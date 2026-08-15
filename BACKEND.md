@@ -19,8 +19,28 @@ Usuarios que pueden entrar al sistema.
 - id
 - email
 - full_name
-- role: admin, cobrador, consulta
+- role: system_admin, owner_admin, cobrador, consulta
+- tenant_id
 - created_at
+
+Roles iniciales:
+
+- system_admin: Nicolas. Puede habilitar/apagar cuentas y administrar el programa.
+- owner_admin: duenio del negocio. Puede ver todo, crear prestamos y registrar cobros.
+- cobrador: futuro perfil limitado a clientes asignados.
+- consulta: solo lectura.
+
+### tenants
+
+Cuenta del cliente que usa el sistema.
+
+- id
+- business_name
+- owner_user_id
+- program_enabled
+- payment_status: trial, active, overdue, suspended
+- created_at
+- updated_at
 
 ### clients
 
@@ -162,9 +182,11 @@ Movimientos de caja para controlar entradas y salidas.
 ## Seguridad
 
 - Cada usuario debe iniciar sesion.
-- Admin ve todo.
+- System admin puede habilitar/apagar el programa por cuenta.
+- Owner admin ve todo dentro de su cuenta.
 - Cobrador puede ver clientes asignados y registrar pagos.
 - Consulta solo lectura.
+- Si `program_enabled = false`, el duenio y sus usuarios no pueden operar.
 - Usar Row Level Security en Supabase antes de pasar a produccion.
 
 ## Etapas de implementacion
@@ -175,6 +197,8 @@ Movimientos de caja para controlar entradas y salidas.
 - Crear tablas.
 - Migrar los 20 clientes de demo como seed.
 - Conectar login.
+- Crear roles system_admin y owner_admin.
+- Agregar control `program_enabled` por cuenta.
 - Leer clientes, prestamos y cuotas desde la base real.
 
 ### Etapa 2
