@@ -32,7 +32,7 @@
           <span>Sesion activa</span>
           <strong id="roleName">Duenio admin</strong>
           <p id="roleDescription">Puede cargar prestamos, registrar cobros y ver toda la gestion.</p>
-          <button class="ghost-button dark" type="button" id="switchUser">Cambiar usuario</button>
+          <button class="ghost-button dark" type="button" id="logoutUser">Cerrar sesion</button>
         </div>
       </aside>
 
@@ -44,7 +44,7 @@
             <p class="system-state" id="systemState">Programa activo</p>
           </div>
           <div class="topbar-actions">
-            <button class="ghost-button mobile-user-button" type="button" id="switchUserTop">Cambiar usuario</button>
+            <button class="ghost-button mobile-user-button" type="button" id="logoutUserTop">Cerrar sesion</button>
             <button class="primary-button" type="button" id="openLoan">Nuevo prestamo</button>
           </div>
         </header>
@@ -59,14 +59,27 @@
 
         <section class="access-panel" id="accessPanel">
           <div>
-            <p class="eyebrow">Accesos de prueba</p>
-            <h2>Elegir perfil</h2>
-            <p class="muted">Esto simula la estructura real: vos como administrador del programa y el cliente como duenio administrador.</p>
+            <p class="eyebrow">Acceso seguro demo</p>
+            <h2>Iniciar sesion</h2>
+            <p class="muted">Esto simula el login real: vos como administrador del programa y el cliente como duenio administrador.</p>
+            <div class="demo-credentials">
+              <strong>Usuarios de prueba</strong>
+              <span>Nicolas: <b>nicolas</b> / <b>admin123</b></span>
+              <span>Duenio: <b>duenio</b> / <b>prestamos123</b></span>
+            </div>
           </div>
-          <div class="role-buttons">
-            <button class="primary-button" type="button" data-role="superadmin">Entrar como Nicolas</button>
-            <button class="ghost-button" type="button" data-role="owner">Entrar como duenio</button>
-          </div>
+          <form class="login-form" id="loginForm">
+            <label>
+              Usuario
+              <input id="loginUser" type="text" autocomplete="username" placeholder="nicolas" required />
+            </label>
+            <label>
+              Contrasena
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="admin123" required />
+            </label>
+            <p class="login-error" id="loginError" aria-live="polite"></p>
+            <button class="primary-button" type="submit">Entrar</button>
+          </form>
         </section>
 
         <section class="view active" id="dashboard">

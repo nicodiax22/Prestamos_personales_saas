@@ -182,6 +182,8 @@ Movimientos de caja para controlar entradas y salidas.
 ## Seguridad
 
 - Cada usuario debe iniciar sesion.
+- Las contrasenas nunca se guardan en texto plano; Supabase Auth las administra con hash seguro.
+- La demo actual usa credenciales fijas en el frontend solo para probar el flujo comercial.
 - System admin puede habilitar/apagar el programa por cuenta.
 - Owner admin ve todo dentro de su cuenta.
 - Cobrador puede ver clientes asignados y registrar pagos.

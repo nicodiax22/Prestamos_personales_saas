@@ -33,6 +33,17 @@ const ROLES = {
   },
 };
 
+const DEMO_USERS = {
+  nicolas: {
+    password: "admin123",
+    role: "superadmin",
+  },
+  duenio: {
+    password: "prestamos123",
+    role: "owner",
+  },
+};
+
 let state = loadState();
 
 const currency = new Intl.NumberFormat("es-AR", {
@@ -95,6 +106,10 @@ function canOperate() {
   return state.role !== null && (state.programEnabled || state.role === "superadmin");
 }
 
+function isLoggedIn() {
+  return state.role !== null;
+}
+
 function updateRoleUi() {
   const role = ROLES[state.role] ?? {
     name: "Sin usuario",
@@ -102,7 +117,10 @@ function updateRoleUi() {
   };
   document.querySelector("#roleName").textContent = role.name;
   document.querySelector("#roleDescription").textContent = role.description;
-  document.querySelector("#accessPanel").classList.toggle("hidden", state.role !== null);
+  document.querySelector("#accessPanel").classList.toggle("hidden", isLoggedIn());
+  document.querySelectorAll(".view, .mobile-tabs, .topbar-actions").forEach((item) => {
+    item.classList.toggle("auth-hidden", !isLoggedIn());
+  });
   document.querySelectorAll(".super-only").forEach((item) => {
     item.classList.toggle("hidden", state.role !== "superadmin");
   });
@@ -360,6 +378,10 @@ function resetDemo() {
 }
 
 function switchView(viewId) {
+  if (!isLoggedIn()) {
+    return;
+  }
+
   if (viewId === "sistema" && state.role !== "superadmin") {
     return;
   }
@@ -381,29 +403,38 @@ function renderAll() {
   updateSimulator();
 }
 
+function login(event) {
+  event.preventDefault();
+  const user = document.querySelector("#loginUser").value.trim().toLowerCase();
+  const password = document.querySelector("#loginPassword").value;
+  const demoUser = DEMO_USERS[user];
+
+  if (!demoUser || demoUser.password !== password) {
+    document.querySelector("#loginError").textContent = "Usuario o contrasena incorrectos.";
+    return;
+  }
+
+  state.role = demoUser.role;
+  document.querySelector("#loginError").textContent = "";
+  document.querySelector("#loginForm").reset();
+  saveState();
+  renderAll();
+  switchView("dashboard");
+}
+
+function logout() {
+  state.role = null;
+  saveState();
+  renderAll();
+}
+
 document.querySelectorAll("[data-view]").forEach((button) => {
   button.addEventListener("click", () => switchView(button.dataset.view));
 });
 
-document.querySelectorAll("[data-role]").forEach((button) => {
-  button.addEventListener("click", () => {
-    state.role = button.dataset.role;
-    saveState();
-    renderAll();
-  });
-});
-
-document.querySelector("#switchUser").addEventListener("click", () => {
-  state.role = state.role === "superadmin" ? "owner" : "superadmin";
-  saveState();
-  renderAll();
-});
-
-document.querySelector("#switchUserTop").addEventListener("click", () => {
-  state.role = state.role === "superadmin" ? "owner" : "superadmin";
-  saveState();
-  renderAll();
-});
+document.querySelector("#loginForm").addEventListener("submit", login);
+document.querySelector("#logoutUser").addEventListener("click", logout);
+document.querySelector("#logoutUserTop").addEventListener("click", logout);
 
 document.querySelector("#programEnabled").addEventListener("change", (event) => {
   state.programEnabled = event.target.checked;
