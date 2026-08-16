@@ -59,6 +59,10 @@ const statusClass = {
   cancelado: "good",
 };
 
+function cloneSeedClients() {
+  return seedClients.map((client) => ({ ...client }));
+}
+
 function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved) {
@@ -66,7 +70,7 @@ function loadState() {
     return {
       role: null,
       programEnabled: true,
-      clients: seedClients,
+      clients: cloneSeedClients(),
       payments: [],
       lastLoanId: null,
       ...parsed,
@@ -76,7 +80,7 @@ function loadState() {
   return {
     role: null,
     programEnabled: true,
-    clients: seedClients,
+    clients: cloneSeedClients(),
     payments: [],
     lastLoanId: null,
   };
@@ -132,6 +136,12 @@ function isLoggedIn() {
 }
 
 function updateRoleUi() {
+  if (state.role && state.role !== "superadmin" && !state.programEnabled) {
+    state.role = null;
+    saveState();
+    document.querySelector("#loginError").textContent = "El sistema fue desactivado. Volve a ingresar cuando el administrador lo reactive.";
+  }
+
   const role = ROLES[state.role] ?? {
     name: "Sin usuario",
     description: "Elegir un perfil de prueba para entrar al sistema.",
@@ -434,7 +444,11 @@ function collectInstallment(clientId) {
 }
 
 function resetDemo() {
-  state.clients = seedClients;
+  if (state.role !== "superadmin") {
+    return;
+  }
+
+  state.clients = cloneSeedClients();
   state.payments = [];
   state.programEnabled = true;
   state.lastLoanId = null;
@@ -477,6 +491,11 @@ function login(event) {
 
   if (!demoUser || demoUser.password !== password) {
     document.querySelector("#loginError").textContent = "Usuario o contrasena incorrectos.";
+    return;
+  }
+
+  if (demoUser.role !== "superadmin" && !state.programEnabled) {
+    document.querySelector("#loginError").textContent = "El sistema esta desactivado. Contacta al administrador para reactivarlo.";
     return;
   }
 
