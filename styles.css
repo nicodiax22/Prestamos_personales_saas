@@ -316,7 +316,7 @@ h2 {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
   margin-bottom: 14px;
 }
@@ -350,6 +350,14 @@ h2 {
   display: block;
   margin-top: 6px;
   color: var(--muted);
+}
+
+.metric strong.positive {
+  color: var(--good);
+}
+
+.metric strong.negative {
+  color: var(--danger);
 }
 
 .content-grid {
@@ -548,8 +556,19 @@ h2 {
   grid-template-columns: 1.2fr 0.85fr 0.55fr auto auto;
 }
 
-.collect-button {
+.row-actions {
+  display: flex;
+  gap: 8px;
   justify-self: end;
+}
+
+.ghost-button.danger {
+  border-color: #efb4af;
+  color: var(--danger);
+}
+
+.ghost-button.danger:hover {
+  background: #fff2f1;
 }
 
 .loan-history-panel {
@@ -558,9 +577,29 @@ h2 {
 
 .loan-history-row {
   display: grid;
-  grid-template-columns: 1.3fr 0.7fr 0.7fr 0.7fr auto;
+  grid-template-columns: 1.2fr 0.6fr 0.6fr 0.6fr 0.6fr auto;
   align-items: center;
   gap: 12px;
+}
+
+.writeoff-panel {
+  margin-top: 14px;
+}
+
+.writeoff-list {
+  display: grid;
+  gap: 10px;
+}
+
+.writeoff-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #efb4af;
+  border-radius: 8px;
+  padding: 13px;
+  background: #fff7f6;
 }
 
 .loan-history-row.new-loan {
@@ -759,8 +798,12 @@ h2 {
     align-items: start;
   }
 
-  .collect-button {
-    justify-self: stretch;
+  .row-actions {
+    flex-direction: column;
+  }
+
+  .row-actions button {
+    width: 100%;
   }
 
   .access-panel,

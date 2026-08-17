@@ -57,10 +57,27 @@ const statusClass = {
   "vence hoy": "warn",
   atrasado: "danger",
   cancelado: "good",
+  incobrable: "danger",
 };
 
 function cloneSeedClients() {
   return seedClients.map((client) => ({ ...client }));
+}
+
+function seedPayments() {
+  const payments = [];
+  seedClients.forEach((client) => {
+    for (let installment = 1; installment <= client.paid; installment += 1) {
+      payments.push({
+        id: `seed-${client.id}-${installment}`,
+        clientId: client.id,
+        amount: installmentValue(client),
+        installment,
+        date: new Date().toISOString(),
+      });
+    }
+  });
+  return payments;
 }
 
 function loadState() {
@@ -71,7 +88,7 @@ function loadState() {
       role: null,
       programEnabled: true,
       clients: cloneSeedClients(),
-      payments: [],
+      payments: seedPayments(),
       lastLoanId: null,
       ...parsed,
     };
@@ -81,7 +98,7 @@ function loadState() {
     role: null,
     programEnabled: true,
     clients: cloneSeedClients(),
-    payments: [],
+    payments: seedPayments(),
     lastLoanId: null,
   };
 }
@@ -113,6 +130,26 @@ function pendingAmount(client) {
 
 function paidAmount(client) {
   return installmentValue(client) * client.paid;
+}
+
+function principalPerInstallment(client) {
+  return client.amount / client.installments;
+}
+
+function interestPerInstallment(client) {
+  return installmentValue(client) - principalPerInstallment(client);
+}
+
+function profitCollected(client) {
+  return interestPerInstallment(client) * client.paid;
+}
+
+function unrecoveredCapital(client) {
+  return principalPerInstallment(client) * pendingInstallments(client);
+}
+
+function pendingProfit(client) {
+  return interestPerInstallment(client) * pendingInstallments(client);
 }
 
 function formatDate(value) {
@@ -174,29 +211,62 @@ function updateRoleUi() {
 
 function renderMetrics() {
   const clients = activeClients();
-  const activeCapital = clients.reduce((sum, client) => sum + client.amount, 0);
-  const totalReturn = clients.reduce((sum, client) => sum + totalToReturn(client), 0);
-  const dueToday = clients
-    .filter((client) => client.status === "vence hoy")
-    .reduce((sum, client) => sum + installmentValue(client), 0);
+  const activeLoans = clients.filter((client) => client.status !== "cancelado" && client.status !== "incobrable");
+  const writtenOff = clients.filter((client) => client.status === "incobrable");
+
+  const activeCapital = activeLoans.reduce((sum, client) => sum + client.amount, 0);
+  const investedCapital = clients.reduce((sum, client) => sum + client.amount, 0);
+  const paid = clients.reduce((sum, client) => sum + paidAmount(client), 0);
+  const profitCollectedTotal = clients.reduce((sum, client) => sum + profitCollected(client), 0);
+  const lostCapital = writtenOff.reduce((sum, client) => sum + unrecoveredCapital(client), 0);
+  const netProfit = profitCollectedTotal - lostCapital;
+  const projectedProfit = activeLoans.reduce((sum, client) => sum + pendingProfit(client), 0);
   const late = clients
     .filter((client) => client.status === "atrasado")
     .reduce((sum, client) => sum + installmentValue(client), 0);
-  const paid = clients.reduce((sum, client) => sum + paidAmount(client), 0);
+  const roi = investedCapital > 0 ? (netProfit / investedCapital) * 100 : 0;
 
   const metrics = [
-    ["Capital colocado", currency.format(activeCapital), `${clients.length} prestamos activos`],
-    ["Total a devolver", currency.format(totalReturn), "Interes editable por prestamo"],
-    ["Ya cobrado", currency.format(paid), `${state.payments.length} cobros registrados`],
-    ["Monto en mora", currency.format(late), "Clientes atrasados"],
+    {
+      label: "Capital activo colocado",
+      value: currency.format(activeCapital),
+      note: `${activeLoans.length} de ${clients.length} prestamos activos`,
+    },
+    {
+      label: "Cobrado historico",
+      value: currency.format(paid),
+      note: `${state.payments.length} cobros registrados`,
+    },
+    {
+      label: "Ganancia neta",
+      value: currency.format(netProfit),
+      note: investedCapital > 0 ? `${roi.toFixed(1)}% sobre capital invertido` : "Sin capital invertido",
+      tone: netProfit >= 0 ? "positive" : "negative",
+    },
+    {
+      label: "Ganancia proyectada",
+      value: currency.format(projectedProfit),
+      note: "Interes pendiente si se cobra todo a tiempo",
+    },
+    {
+      label: "Perdida por incobrables",
+      value: currency.format(lostCapital),
+      note: `${writtenOff.length} prestamos dados de baja`,
+      tone: lostCapital > 0 ? "negative" : "",
+    },
+    {
+      label: "Monto en mora",
+      value: currency.format(late),
+      note: "Cuota vencida de clientes atrasados",
+    },
   ];
 
   document.querySelector("#metrics").innerHTML = metrics
     .map(
-      ([label, value, note]) => `
+      ({ label, value, note, tone }) => `
         <article class="metric">
           <span>${label}</span>
-          <strong>${value}</strong>
+          <strong class="${tone ?? ""}">${value}</strong>
           <small>${note}</small>
         </article>
       `,
@@ -205,7 +275,9 @@ function renderMetrics() {
 }
 
 function renderDueList() {
-  const due = activeClients().filter((client) => client.status !== "al dia" && client.status !== "cancelado");
+  const due = activeClients()
+    .filter((client) => !["al dia", "cancelado", "incobrable"].includes(client.status))
+    .sort((a, b) => (b.status === "atrasado") - (a.status === "atrasado"));
   document.querySelector("#dueList").innerHTML = due.length
     ? due
         .slice(0, 7)
@@ -251,6 +323,18 @@ function renderRiskList() {
     : `<div class="empty-state">Sin clientes atrasados.</div>`;
 }
 
+function loanStatusLabel(client) {
+  if (client.status === "cancelado") {
+    return "Prestamo cancelado";
+  }
+
+  if (client.status === "incobrable") {
+    return "Prestamo incobrable";
+  }
+
+  return "Prestamo activo";
+}
+
 function renderClients(list = activeClients()) {
   document.querySelector("#clientsTitle").textContent = `${activeClients().length} clientes cargados`;
   document.querySelector("#clientGrid").innerHTML = list
@@ -267,7 +351,7 @@ function renderClients(list = activeClients()) {
             <span>${client.zone}</span>
           </div>
           <div>
-            <div class="item-subtitle">Prestamo activo</div>
+            <div class="item-subtitle">${loanStatusLabel(client)}</div>
             <strong>${currency.format(client.amount)} -> ${currency.format(totalToReturn(client))}</strong>
           </div>
           <div class="progress">
@@ -281,8 +365,8 @@ function renderClients(list = activeClients()) {
 }
 
 function renderCollections() {
-  const rows = activeClients()
-    .filter((client) => client.status !== "cancelado")
+  const collectible = activeClients().filter((client) => client.status !== "cancelado" && client.status !== "incobrable");
+  const rows = collectible
     .map(
       (client) => `
         <article class="collection-row">
@@ -299,17 +383,46 @@ function renderCollections() {
             <strong>${client.paid}/${client.installments}</strong>
           </div>
           <span class="status ${statusClass[client.status]}">${client.status}</span>
-          <button class="ghost-button collect-button" data-collect="${client.id}" type="button" ${!canOperate() ? "disabled" : ""}>
-            Cobrar cuota
-          </button>
+          <div class="row-actions">
+            <button class="ghost-button collect-button" data-collect="${client.id}" type="button" ${!canOperate() ? "disabled" : ""}>
+              Cobrar cuota
+            </button>
+            ${
+              client.status === "atrasado"
+                ? `<button class="ghost-button danger writeoff-button" data-writeoff="${client.id}" type="button" ${!canOperate() ? "disabled" : ""}>
+                    Marcar incobrable
+                  </button>`
+                : ""
+            }
+          </div>
         </article>
       `,
     )
     .join("");
 
   document.querySelector("#collectionsTable").innerHTML = canOperate()
-    ? rows
+    ? rows || `<div class="empty-state">No quedan cuotas por cobrar.</div>`
     : `<div class="locked-state">Programa apagado. El duenio no puede registrar cobros hasta que Nicolas lo active.</div>`;
+
+  const writtenOff = activeClients().filter((client) => client.status === "incobrable");
+  document.querySelector("#writeOffList").innerHTML = writtenOff.length
+    ? writtenOff
+        .map(
+          (client) => `
+            <article class="writeoff-row">
+              <div>
+                <div class="item-title">${client.name}</div>
+                <div class="item-subtitle">${client.zone}</div>
+              </div>
+              <div>
+                <div class="item-subtitle">Capital no recuperado</div>
+                <strong>${currency.format(unrecoveredCapital(client))}</strong>
+              </div>
+            </article>
+          `,
+        )
+        .join("")
+    : `<div class="empty-state">No hay prestamos dados de baja.</div>`;
 }
 
 function renderLoanHistory() {
@@ -331,6 +444,10 @@ function renderLoanHistory() {
           <div>
             <div class="item-subtitle">A devolver</div>
             <strong>${currency.format(totalToReturn(client))}</strong>
+          </div>
+          <div>
+            <div class="item-subtitle">Ganancia cobrada</div>
+            <strong>${currency.format(profitCollected(client))}</strong>
           </div>
           <div>
             <div class="item-subtitle">Cuotas</div>
@@ -426,7 +543,7 @@ function collectInstallment(clientId) {
   }
 
   const client = state.clients.find((item) => item.id === clientId);
-  if (!client || client.paid >= client.installments) {
+  if (!client || client.paid >= client.installments || client.status === "incobrable") {
     return;
   }
 
@@ -443,13 +560,38 @@ function collectInstallment(clientId) {
   renderAll();
 }
 
+function markUncollectible(clientId) {
+  if (!canOperate()) {
+    return;
+  }
+
+  const client = state.clients.find((item) => item.id === clientId);
+  if (!client || client.status === "cancelado" || client.status === "incobrable") {
+    return;
+  }
+
+  const confirmed = confirm(`Marcar a ${client.name} como incobrable? El capital pendiente (${currency.format(unrecoveredCapital(client))}) se contabilizara como perdida.`);
+  if (!confirmed) {
+    return;
+  }
+
+  client.status = "incobrable";
+  saveState();
+  renderAll();
+}
+
 function resetDemo() {
   if (state.role !== "superadmin") {
     return;
   }
 
+  const confirmed = confirm("Reiniciar la demo? Se perderan los prestamos y cobros cargados.");
+  if (!confirmed) {
+    return;
+  }
+
   state.clients = cloneSeedClients();
-  state.payments = [];
+  state.payments = seedPayments();
   state.programEnabled = true;
   state.lastLoanId = null;
   saveState();
@@ -544,9 +686,15 @@ document.querySelectorAll("#loanForm input, #loanForm select").forEach((input) =
 document.querySelector("#loanForm").addEventListener("submit", createLoan);
 document.querySelector("#resetDemo").addEventListener("click", resetDemo);
 document.querySelector("#collectionsTable").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-collect]");
-  if (button) {
-    collectInstallment(Number(button.dataset.collect));
+  const collectButton = event.target.closest("[data-collect]");
+  if (collectButton) {
+    collectInstallment(Number(collectButton.dataset.collect));
+    return;
+  }
+
+  const writeoffButton = event.target.closest("[data-writeoff]");
+  if (writeoffButton) {
+    markUncollectible(Number(writeoffButton.dataset.writeoff));
   }
 });
 

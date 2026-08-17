@@ -4,9 +4,11 @@ Prototipo responsive para presentar un sistema de gestion de prestamos personale
 
 ## Incluye
 
-- Dashboard con capital colocado, total a devolver, cobranza del dia y mora.
-- Base inicial de 20 clientes ficticios.
-- Listado de cuotas por cobrar y clientes atrasados.
+- Dashboard con capital colocado, cobrado historico, mora y **rentabilidad**: ganancia neta y proyectada sobre el capital invertido, mas la perdida acumulada por incobrables.
+- Base inicial de 20 clientes ficticios, con historial de cobros consistente desde el primer ingreso.
+- Listado de cuotas por cobrar y clientes atrasados, priorizado por urgencia.
+- Marcar un prestamo atrasado como incobrable (con confirmacion) para reflejar la perdida de capital en el dashboard.
+- Historial de prestamos con la ganancia cobrada por cada uno.
 - Simulador de nuevo prestamo con interes base del 100%.
 - Plan de cuotas mensuales automatico.
 - Vista de cobranzas.
@@ -17,6 +19,7 @@ Prototipo responsive para presentar un sistema de gestion de prestamos personale
 - Registro de cobros con avance de cuotas pagas.
 - Persistencia local en el navegador para hacer pruebas reales sin backend.
 - Layout responsive para celular.
+- Confirmacion antes de reiniciar la demo o dar de baja un prestamo, para evitar perder datos por error.
 
 ## Como verlo
 

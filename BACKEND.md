@@ -72,7 +72,7 @@ Prestamos otorgados.
 - start_date
 - first_due_date
 - due_day
-- status: activo, cancelado, vencido, refinanciado
+- status: activo, cancelado, vencido, refinanciado, incobrable
 - created_by
 - created_at
 
@@ -143,6 +143,9 @@ Movimientos de caja para controlar entradas y salidas.
 - Monto vencido.
 - Clientes atrasados.
 - Proximas cuotas.
+- Ganancia neta cobrada y rentabilidad (%) sobre el capital invertido.
+- Ganancia proyectada (interes pendiente de los prestamos activos).
+- Perdida acumulada por capital de prestamos marcados incobrables.
 
 ### Clientes
 
