@@ -44,6 +44,75 @@ const statusClass = {
   incobrable: "danger",
 };
 
+function showToast(message, tone = "info") {
+  const root = document.querySelector("#toastRoot");
+  const toast = document.createElement("div");
+  toast.className = `toast ${tone}`;
+  toast.textContent = message;
+  root.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 200);
+  }, 4000);
+}
+
+function showConfirm(message, { danger = false, confirmLabel = "Confirmar" } = {}) {
+  return new Promise((resolve) => {
+    const root = document.querySelector("#modalRoot");
+    root.innerHTML = `
+      <div class="modal-backdrop">
+        <div class="modal-box" role="alertdialog" aria-modal="true">
+          <p>${message}</p>
+          <div class="modal-actions">
+            <button type="button" class="ghost-button" data-action="cancel">Cancelar</button>
+            <button type="button" class="primary-button ${danger ? "danger" : ""}" data-action="confirm">${confirmLabel}</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const close = (result) => {
+      root.innerHTML = "";
+      resolve(result);
+    };
+
+    root.querySelector('[data-action="cancel"]').addEventListener("click", () => close(false));
+    root.querySelector('[data-action="confirm"]').addEventListener("click", () => close(true));
+    root.querySelector(".modal-backdrop").addEventListener("click", (event) => {
+      if (event.target.classList.contains("modal-backdrop")) {
+        close(false);
+      }
+    });
+  });
+}
+
+function debtorLink(token) {
+  const url = new URL("cuenta.html", window.location.href);
+  url.searchParams.set("token", token);
+  return url.toString();
+}
+
+async function setButtonBusy(button, busyLabel, task) {
+  if (!button) {
+    return task();
+  }
+
+  const originalLabel = button.textContent;
+  const originalDisabled = button.disabled;
+  button.disabled = true;
+  button.textContent = busyLabel;
+
+  try {
+    return await task();
+  } finally {
+    if (button.isConnected) {
+      button.disabled = originalDisabled;
+      button.textContent = originalLabel;
+    }
+  }
+}
+
 function mapLoanRow(row) {
   const person = row.clients ?? {};
   return {
@@ -526,20 +595,37 @@ async function createLoan(event) {
     first_due_date: firstDue || null,
   };
 
-  const { data, error } = await sb.from("loans").insert(payload).select("id").single();
-  if (error) {
-    console.error(error);
-    return;
-  }
+  const submitButton = document.querySelector("#loanSubmit");
 
-  state.lastLoanId = data.id;
-  await fetchState();
-  renderAll();
-  document.querySelector("#loanSuccess").textContent = `Prestamo registrado para ${selectedPerson.full_name}. Ya aparece en historial y cobranzas.`;
-  switchView("prestamos");
+  await setButtonBusy(submitButton, "Registrando...", async () => {
+    const { data, error } = await sb.from("loans").insert(payload).select("id, public_token").single();
+    if (error) {
+      console.error(error);
+      showToast("No se pudo registrar el prestamo. Intenta de nuevo.", "danger");
+      return;
+    }
+
+    state.lastLoanId = data.id;
+    await fetchState();
+    renderAll();
+
+    const link = debtorLink(data.public_token);
+    document.querySelector("#loanSuccess").innerHTML = `
+      <p>Prestamo registrado para ${selectedPerson.full_name}. Compartile este link para que vea el estado de su cuenta:</p>
+      <div class="loan-link-row">
+        <input type="text" readonly value="${link}" id="loanLinkInput" />
+        <button type="button" class="ghost-button small" id="copyLoanLink">Copiar link</button>
+      </div>
+    `;
+    document.querySelector("#copyLoanLink").addEventListener("click", async () => {
+      await navigator.clipboard.writeText(link);
+      showToast("Link copiado al portapapeles.", "good");
+    });
+    switchView("prestamos");
+  });
 }
 
-async function collectInstallment(clientId) {
+async function collectInstallment(clientId, button) {
   if (!canOperate()) {
     return;
   }
@@ -549,32 +635,36 @@ async function collectInstallment(clientId) {
     return;
   }
 
-  const newPaid = client.paid + 1;
-  const newStatus = newPaid >= client.installments ? "cancelado" : "al dia";
+  await setButtonBusy(button, "Cobrando...", async () => {
+    const newPaid = client.paid + 1;
+    const newStatus = newPaid >= client.installments ? "cancelado" : "al dia";
 
-  const { error: updateError } = await sb
-    .from("loans")
-    .update({ installments_paid: newPaid, status: newStatus })
-    .eq("id", clientId);
-  if (updateError) {
-    console.error(updateError);
-    return;
-  }
+    const { error: updateError } = await sb
+      .from("loans")
+      .update({ installments_paid: newPaid, status: newStatus })
+      .eq("id", clientId);
+    if (updateError) {
+      console.error(updateError);
+      showToast("No se pudo registrar el cobro. Intenta de nuevo.", "danger");
+      return;
+    }
 
-  const { error: paymentError } = await sb.from("payments").insert({
-    loan_id: clientId,
-    amount: installmentValue(client),
-    installment_number: newPaid,
+    const { error: paymentError } = await sb.from("payments").insert({
+      loan_id: clientId,
+      amount: installmentValue(client),
+      installment_number: newPaid,
+    });
+    if (paymentError) {
+      console.error(paymentError);
+    }
+
+    await fetchState();
+    renderAll();
+    showToast(`Cuota ${newPaid}/${client.installments} cobrada a ${client.name}.`, "good");
   });
-  if (paymentError) {
-    console.error(paymentError);
-  }
-
-  await fetchState();
-  renderAll();
 }
 
-async function markUncollectible(clientId) {
+async function markUncollectible(clientId, button) {
   if (!canOperate()) {
     return;
   }
@@ -584,41 +674,54 @@ async function markUncollectible(clientId) {
     return;
   }
 
-  const confirmed = confirm(`Marcar a ${client.name} como incobrable? El capital pendiente (${currency.format(unrecoveredCapital(client))}) se contabilizara como perdida.`);
+  const confirmed = await showConfirm(
+    `Marcar a <strong>${client.name}</strong> como incobrable? El capital pendiente (${currency.format(unrecoveredCapital(client))}) se contabilizara como perdida.`,
+    { danger: true, confirmLabel: "Marcar incobrable" },
+  );
   if (!confirmed) {
     return;
   }
 
-  const { error } = await sb.from("loans").update({ status: "incobrable" }).eq("id", clientId);
-  if (error) {
-    console.error(error);
-    return;
-  }
+  await setButtonBusy(button, "Marcando...", async () => {
+    const { error } = await sb.from("loans").update({ status: "incobrable" }).eq("id", clientId);
+    if (error) {
+      console.error(error);
+      showToast("No se pudo marcar el prestamo como incobrable.", "danger");
+      return;
+    }
 
-  await fetchState();
-  renderAll();
+    await fetchState();
+    renderAll();
+    showToast(`${client.name} quedo marcado como incobrable.`, "danger");
+  });
 }
 
-async function resetDemo() {
+async function resetDemo(button) {
   if (state.role !== "superadmin") {
     return;
   }
 
-  const confirmed = confirm("Reiniciar la demo? Se perderan los prestamos y cobros cargados.");
+  const confirmed = await showConfirm("Reiniciar la demo? Se perderan los prestamos y cobros cargados.", {
+    danger: true,
+    confirmLabel: "Reiniciar demo",
+  });
   if (!confirmed) {
     return;
   }
 
-  const { error } = await sb.rpc("reset_demo");
-  if (error) {
-    console.error(error);
-    alert(`No se pudo reiniciar la demo: ${error.message}`);
-    return;
-  }
+  await setButtonBusy(button, "Reiniciando...", async () => {
+    const { error } = await sb.rpc("reset_demo");
+    if (error) {
+      console.error(error);
+      showToast(`No se pudo reiniciar la demo: ${error.message}`, "danger");
+      return;
+    }
 
-  state.lastLoanId = null;
-  await fetchState();
-  renderAll();
+    state.lastLoanId = null;
+    await fetchState();
+    renderAll();
+    showToast("La demo se reinicio con los datos originales.", "good");
+  });
 }
 
 function switchView(viewId) {
@@ -653,40 +756,44 @@ async function login(event) {
   const user = document.querySelector("#loginUser").value.trim().toLowerCase();
   const password = document.querySelector("#loginPassword").value;
   const email = LOGIN_EMAILS[user];
+  const submitButton = document.querySelector("#loginForm button[type=submit]");
+
+  document.querySelector("#loginError").textContent = "";
 
   if (!email) {
     document.querySelector("#loginError").textContent = "Usuario o contrasena incorrectos.";
     return;
   }
 
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error || !data.session) {
-    document.querySelector("#loginError").textContent = "Usuario o contrasena incorrectos.";
-    return;
-  }
+  await setButtonBusy(submitButton, "Ingresando...", async () => {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error || !data.session) {
+      document.querySelector("#loginError").textContent = "Usuario o contrasena incorrectos.";
+      return;
+    }
 
-  await loadSessionRole();
+    await loadSessionRole();
 
-  if (!state.role) {
-    document.querySelector("#loginError").textContent = "Esta cuenta no tiene un rol asignado en el sistema.";
-    await sb.auth.signOut();
-    return;
-  }
+    if (!state.role) {
+      document.querySelector("#loginError").textContent = "Esta cuenta no tiene un rol asignado en el sistema.";
+      await sb.auth.signOut();
+      return;
+    }
 
-  await fetchState();
+    await fetchState();
 
-  if (state.role !== "superadmin" && !state.programEnabled) {
-    document.querySelector("#loginError").textContent = "El sistema esta desactivado. Contacta al administrador para reactivarlo.";
-    await sb.auth.signOut();
-    state.role = null;
+    if (state.role !== "superadmin" && !state.programEnabled) {
+      document.querySelector("#loginError").textContent = "El sistema esta desactivado. Contacta al administrador para reactivarlo.";
+      await sb.auth.signOut();
+      state.role = null;
+      renderAll();
+      return;
+    }
+
+    document.querySelector("#loginForm").reset();
     renderAll();
-    return;
-  }
-
-  document.querySelector("#loginError").textContent = "";
-  document.querySelector("#loginForm").reset();
-  renderAll();
-  switchView("dashboard");
+    switchView("dashboard");
+  });
 }
 
 async function logout() {
@@ -705,15 +812,19 @@ document.querySelector("#logoutUserTop").addEventListener("click", logout);
 
 document.querySelector("#programEnabled").addEventListener("change", async (event) => {
   const enabled = event.target.checked;
+  event.target.disabled = true;
   const { error } = await sb.from("settings").update({ program_enabled: enabled, updated_at: new Date().toISOString() }).eq("id", 1);
+  event.target.disabled = false;
   if (error) {
     console.error(error);
     event.target.checked = state.programEnabled;
+    showToast("No se pudo actualizar el estado del programa.", "danger");
     return;
   }
 
   state.programEnabled = enabled;
   renderAll();
+  showToast(enabled ? "Programa activado." : "Programa desactivado.", enabled ? "good" : "danger");
 });
 
 document.querySelector("#openLoan").addEventListener("click", () => switchView("prestamos"));
@@ -731,17 +842,17 @@ document.querySelectorAll("#loanForm input, #loanForm select").forEach((input) =
 });
 
 document.querySelector("#loanForm").addEventListener("submit", createLoan);
-document.querySelector("#resetDemo").addEventListener("click", resetDemo);
+document.querySelector("#resetDemo").addEventListener("click", (event) => resetDemo(event.currentTarget));
 document.querySelector("#collectionsTable").addEventListener("click", (event) => {
   const collectButton = event.target.closest("[data-collect]");
   if (collectButton) {
-    collectInstallment(Number(collectButton.dataset.collect));
+    collectInstallment(Number(collectButton.dataset.collect), collectButton);
     return;
   }
 
   const writeoffButton = event.target.closest("[data-writeoff]");
   if (writeoffButton) {
-    markUncollectible(Number(writeoffButton.dataset.writeoff));
+    markUncollectible(Number(writeoffButton.dataset.writeoff), writeoffButton);
   }
 });
 

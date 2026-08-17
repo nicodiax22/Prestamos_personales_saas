@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tu cuenta | Credito Simple</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Inter+Tight:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="cuenta.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="brandline">
+        <div class="brand-mark">CS</div>
+        <span>Credito Simple</span>
+      </div>
+
+      <section class="card" id="gateCard">
+        <p class="eyebrow">Acceso a tu cuenta</p>
+        <h1>Ver el estado de tu prestamo</h1>
+        <p class="lead">Ingresa tu DNI para confirmar que sos vos. Solo con este link y tu DNI se puede ver esta cuenta.</p>
+        <form id="gateForm">
+          <label>
+            DNI
+            <input id="dniInput" type="text" inputmode="numeric" placeholder="Ej: 31456908" required autofocus />
+          </label>
+          <p class="field-error" id="gateError" aria-live="polite"></p>
+          <button class="primary-button" type="submit" id="gateSubmit">Ver mi cuenta</button>
+        </form>
+      </section>
+
+      <section class="card" id="invalidCard" hidden>
+        <p class="eyebrow">Link invalido</p>
+        <h1>No encontramos esta cuenta</h1>
+        <p class="lead">El link que abriste no es valido o esta incompleto. Pedile a quien te dio el prestamo que te reenvie el link.</p>
+      </section>
+
+      <section class="account" id="accountView" hidden>
+        <header class="account-header">
+          <div>
+            <p class="eyebrow">Hola<span id="clientName"></span></p>
+            <h1>Estado de tu cuenta</h1>
+          </div>
+          <span class="status-pill" id="statusPill"></span>
+        </header>
+
+        <div class="hero-stat">
+          <span>Te queda por pagar</span>
+          <strong id="pendingAmount">$0</strong>
+          <p id="nextDueNote"></p>
+        </div>
+
+        <div class="stat-row">
+          <div class="stat">
+            <span>Prestado</span>
+            <strong id="statAmount">$0</strong>
+          </div>
+          <div class="stat">
+            <span>Total a devolver</span>
+            <strong id="statTotal">$0</strong>
+          </div>
+          <div class="stat">
+            <span>Valor de cuota</span>
+            <strong id="statInstallment">$0</strong>
+          </div>
+        </div>
+
+        <section class="timeline-panel">
+          <div class="panel-header">
+            <p class="eyebrow">Plan de pagos</p>
+            <h2 id="progressLabel">0 de 0 cuotas pagas</h2>
+          </div>
+          <div class="progress-track">
+            <span id="progressFill"></span>
+          </div>
+          <ol class="timeline" id="timeline"></ol>
+        </section>
+
+        <p class="footnote">Estos datos los provee quien te otorgo el prestamo. Si algo no coincide con lo que pagaste, consultale directamente.</p>
+      </section>
+
+      <section class="card" id="loadingCard">
+        <p class="lead">Cargando...</p>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="supabase-client.js"></script>
+    <script src="cuenta.js"></script>
+  </body>
+</html>

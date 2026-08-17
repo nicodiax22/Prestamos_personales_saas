@@ -159,8 +159,8 @@
                     <option value="atrasado">Atrasado</option>
                   </select>
                 </label>
-                <p class="form-success" id="loanSuccess" aria-live="polite"></p>
-                <button class="primary-button" type="submit">Registrar prestamo</button>
+                <div class="form-success" id="loanSuccess" aria-live="polite"></div>
+                <button class="primary-button" type="submit" id="loanSubmit">Registrar prestamo</button>
               </form>
             </section>
 
@@ -259,6 +259,9 @@
         </section>
       </main>
     </div>
+
+    <div class="toast-root" id="toastRoot"></div>
+    <div class="modal-root" id="modalRoot"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <script src="supabase-client.js"></script>

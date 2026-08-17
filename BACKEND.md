@@ -208,6 +208,13 @@ Movimientos de caja para controlar entradas y salidas.
 
 Simplificaciones respecto al diseno original: no hay tabla `installments` separada (las cuotas se resumen en `loans.installment_count` / `installments_paid`, igual que en la demo original) ni `tenants` (una sola cuenta/negocio por ahora). `cash_movements` queda para Etapa 3.
 
+### Portal del deudor (agregado fuera del diseno original)
+
+- `loans.public_token` (uuid unico, generado solo) identifica el link publico de cada prestamo.
+- Funcion `get_loan_by_token(p_token, p_dni)` (security definer, sin RLS involucrado): busca el prestamo por token, valida que el DNI ingresado coincida (normalizando puntos/espacios) y devuelve un JSON con los datos del prestamo, cliente y pagos. Si el token o el DNI no coinciden, devuelve `null` sin distinguir cual de los dos fallo.
+- `anon` y `authenticated` tienen `execute` sobre esa funcion; no hay policy de `select` publica sobre `loans`/`clients`/`payments`, asi que no se puede leer nada sin pasar por la funcion y su verificacion de DNI.
+- El link (`cuenta.html?token=...`) se genera y muestra una unica vez al crear el prestamo (`app.js` -> `createLoan`).
+
 ### Etapa 2
 
 - Crear prestamos reales.
