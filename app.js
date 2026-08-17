@@ -1,27 +1,3 @@
-const seedClients = [
-  { id: 1, name: "Martin Acosta", dni: "31.456.908", phone: "11 5842-0194", zone: "San Justo", status: "al dia", amount: 120000, rate: 100, installments: 4, paid: 2, dueDay: 15 },
-  { id: 2, name: "Carolina Benitez", dni: "28.334.710", phone: "11 6039-2218", zone: "Ramos Mejia", status: "vence hoy", amount: 85000, rate: 100, installments: 3, paid: 1, dueDay: 15 },
-  { id: 3, name: "Sergio Cabrera", dni: "34.882.109", phone: "11 5091-7730", zone: "Lomas del Mirador", status: "atrasado", amount: 200000, rate: 100, installments: 5, paid: 2, dueDay: 8 },
-  { id: 4, name: "Julieta Duarte", dni: "37.115.492", phone: "11 6274-9042", zone: "Moron", status: "al dia", amount: 150000, rate: 100, installments: 6, paid: 4, dueDay: 22 },
-  { id: 5, name: "Pablo Espindola", dni: "30.918.227", phone: "11 5438-6811", zone: "Haedo", status: "atrasado", amount: 100000, rate: 100, installments: 4, paid: 1, dueDay: 5 },
-  { id: 6, name: "Romina Ferreyra", dni: "39.221.084", phone: "11 6021-4488", zone: "Ituzaingo", status: "al dia", amount: 70000, rate: 100, installments: 2, paid: 1, dueDay: 28 },
-  { id: 7, name: "Gaston Gimenez", dni: "27.881.940", phone: "11 5983-7265", zone: "Castelar", status: "vence hoy", amount: 180000, rate: 100, installments: 6, paid: 3, dueDay: 15 },
-  { id: 8, name: "Natalia Herrera", dni: "35.604.218", phone: "11 6110-3329", zone: "Ciudadela", status: "al dia", amount: 95000, rate: 100, installments: 3, paid: 2, dueDay: 20 },
-  { id: 9, name: "Federico Ibarra", dni: "32.440.673", phone: "11 5304-8702", zone: "Merlo", status: "atrasado", amount: 250000, rate: 100, installments: 8, paid: 3, dueDay: 1 },
-  { id: 10, name: "Soledad Juarez", dni: "40.078.133", phone: "11 5694-1108", zone: "Moreno", status: "al dia", amount: 60000, rate: 100, installments: 2, paid: 1, dueDay: 18 },
-  { id: 11, name: "Diego Ledesma", dni: "29.712.554", phone: "11 5900-7341", zone: "Padua", status: "vence hoy", amount: 130000, rate: 100, installments: 4, paid: 2, dueDay: 15 },
-  { id: 12, name: "Melina Molina", dni: "38.902.417", phone: "11 6518-9033", zone: "Tapiales", status: "al dia", amount: 110000, rate: 100, installments: 5, paid: 2, dueDay: 26 },
-  { id: 13, name: "Hector Navarro", dni: "26.193.775", phone: "11 5489-3340", zone: "Villa Luzuriaga", status: "atrasado", amount: 90000, rate: 100, installments: 3, paid: 0, dueDay: 9 },
-  { id: 14, name: "Paula Ojeda", dni: "36.337.992", phone: "11 6200-4419", zone: "La Tablada", status: "al dia", amount: 170000, rate: 100, installments: 6, paid: 5, dueDay: 24 },
-  { id: 15, name: "Leonel Paredes", dni: "33.840.661", phone: "11 5772-8107", zone: "Isidro Casanova", status: "al dia", amount: 50000, rate: 100, installments: 2, paid: 1, dueDay: 17 },
-  { id: 16, name: "Marina Quiroga", dni: "41.225.380", phone: "11 6304-1175", zone: "Moron", status: "vence hoy", amount: 210000, rate: 100, installments: 7, paid: 4, dueDay: 15 },
-  { id: 17, name: "Rodrigo Rojas", dni: "30.552.196", phone: "11 5980-6509", zone: "San Justo", status: "al dia", amount: 140000, rate: 100, installments: 4, paid: 3, dueDay: 27 },
-  { id: 18, name: "Valeria Silva", dni: "37.846.701", phone: "11 6122-7540", zone: "Haedo", status: "atrasado", amount: 300000, rate: 100, installments: 10, paid: 4, dueDay: 3 },
-  { id: 19, name: "Emanuel Torres", dni: "28.991.450", phone: "11 5366-2901", zone: "Ramos Mejia", status: "al dia", amount: 75000, rate: 100, installments: 3, paid: 2, dueDay: 19 },
-  { id: 20, name: "Luciana Vega", dni: "39.665.308", phone: "11 6461-0874", zone: "Castelar", status: "al dia", amount: 160000, rate: 100, installments: 6, paid: 3, dueDay: 23 },
-];
-
-const STORAGE_KEY = "credito-simple-demo-v2";
 const ROLES = {
   superadmin: {
     name: "Nicolas · Admin sistema",
@@ -33,18 +9,26 @@ const ROLES = {
   },
 };
 
-const DEMO_USERS = {
-  nicolas: {
-    password: "admin123",
-    role: "superadmin",
-  },
-  duenio: {
-    password: "prestamos123",
-    role: "owner",
-  },
+// El login sigue pidiendo un "usuario" corto por compatibilidad con la UI,
+// pero por debajo autentica contra Supabase Auth con el email real de esa cuenta.
+const LOGIN_EMAILS = {
+  nicolas: "nicodiax22@gmail.com",
+  duenio: "duenio@creditosimple.demo",
 };
 
-let state = loadState();
+const DB_ROLE_TO_APP_ROLE = {
+  system_admin: "superadmin",
+  owner_admin: "owner",
+};
+
+let state = {
+  role: null,
+  programEnabled: true,
+  clients: [],
+  payments: [],
+  people: [],
+  lastLoanId: null,
+};
 
 const currency = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -60,51 +44,66 @@ const statusClass = {
   incobrable: "danger",
 };
 
-function cloneSeedClients() {
-  return seedClients.map((client) => ({ ...client }));
-}
-
-function seedPayments() {
-  const payments = [];
-  seedClients.forEach((client) => {
-    for (let installment = 1; installment <= client.paid; installment += 1) {
-      payments.push({
-        id: `seed-${client.id}-${installment}`,
-        clientId: client.id,
-        amount: installmentValue(client),
-        installment,
-        date: new Date().toISOString(),
-      });
-    }
-  });
-  return payments;
-}
-
-function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    return {
-      role: null,
-      programEnabled: true,
-      clients: cloneSeedClients(),
-      payments: seedPayments(),
-      lastLoanId: null,
-      ...parsed,
-    };
-  }
-
+function mapLoanRow(row) {
+  const person = row.clients ?? {};
   return {
-    role: null,
-    programEnabled: true,
-    clients: cloneSeedClients(),
-    payments: seedPayments(),
-    lastLoanId: null,
+    id: row.id,
+    clientId: row.client_id,
+    name: person.full_name,
+    dni: person.dni,
+    phone: person.phone,
+    zone: person.zone,
+    status: row.status,
+    amount: Number(row.amount),
+    rate: Number(row.interest_percent),
+    installments: row.installment_count,
+    paid: row.installments_paid,
+    dueDay: row.due_day,
+    firstDue: row.first_due_date,
+    createdAt: row.created_at,
   };
 }
 
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function mapPaymentRow(row) {
+  return {
+    id: row.id,
+    clientId: row.loan_id,
+    amount: Number(row.amount),
+    installment: row.installment_number,
+    date: row.payment_date,
+  };
+}
+
+async function fetchState() {
+  const [{ data: loanRows, error: loanError }, { data: paymentRows }, { data: peopleRows }, { data: settingsRow }] = await Promise.all([
+    sb.from("loans").select("*, clients(full_name, dni, phone, zone)").order("id", { ascending: false }),
+    sb.from("payments").select("*"),
+    sb.from("clients").select("id, full_name").order("full_name"),
+    sb.from("settings").select("program_enabled").eq("id", 1).single(),
+  ]);
+
+  if (loanError) {
+    console.error(loanError);
+  }
+
+  state.clients = (loanRows ?? []).map(mapLoanRow);
+  state.payments = (paymentRows ?? []).map(mapPaymentRow);
+  state.people = peopleRows ?? [];
+  state.programEnabled = settingsRow?.program_enabled ?? true;
+}
+
+async function loadSessionRole() {
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+
+  if (!user) {
+    state.role = null;
+    return;
+  }
+
+  const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).single();
+  state.role = profile ? DB_ROLE_TO_APP_ROLE[profile.role] ?? null : null;
 }
 
 function activeClients() {
@@ -175,7 +174,7 @@ function isLoggedIn() {
 function updateRoleUi() {
   if (state.role && state.role !== "superadmin" && !state.programEnabled) {
     state.role = null;
-    saveState();
+    sb.auth.signOut();
     document.querySelector("#loginError").textContent = "El sistema fue desactivado. Volve a ingresar cuando el administrador lo reactive.";
   }
 
@@ -470,8 +469,8 @@ function setDefaultDate() {
 }
 
 function populateLoanClients() {
-  document.querySelector("#loanClient").innerHTML = activeClients()
-    .map((client) => `<option value="${client.id}">${client.name}</option>`)
+  document.querySelector("#loanClient").innerHTML = state.people
+    .map((person) => `<option value="${person.id}">${person.full_name}</option>`)
     .join("");
 }
 
@@ -503,41 +502,44 @@ function updateSimulator() {
   document.querySelector("#schedule").innerHTML = rows.join("");
 }
 
-function createLoan(event) {
+async function createLoan(event) {
   event.preventDefault();
   if (!canOperate()) {
     return;
   }
 
-  const selectedClient = activeClients().find((client) => client.id === Number(document.querySelector("#loanClient").value));
-  if (!selectedClient) {
+  const clientId = Number(document.querySelector("#loanClient").value);
+  const selectedPerson = state.people.find((person) => person.id === clientId);
+  if (!selectedPerson) {
     return;
   }
 
   const firstDue = document.querySelector("#loanFirstDue").value;
-  const newLoanId = Date.now();
-  const newClient = {
-    ...selectedClient,
-    id: newLoanId,
+  const payload = {
+    client_id: clientId,
     amount: Number(document.querySelector("#loanAmount").value) || 0,
-    rate: Number(document.querySelector("#loanRate").value) || 100,
-    installments: Number(document.querySelector("#loanInstallments").value) || 1,
-    paid: 0,
+    interest_percent: Number(document.querySelector("#loanRate").value) || 100,
+    installment_count: Number(document.querySelector("#loanInstallments").value) || 1,
+    installments_paid: 0,
     status: document.querySelector("#loanStatus").value,
-    firstDue,
-    dueDay: firstDue ? new Date(`${firstDue}T00:00:00`).getDate() : 15,
-    createdAt: new Date().toISOString(),
+    due_day: firstDue ? new Date(`${firstDue}T00:00:00`).getDate() : 15,
+    first_due_date: firstDue || null,
   };
 
-  state.clients = [newClient, ...state.clients];
-  state.lastLoanId = newLoanId;
-  saveState();
+  const { data, error } = await sb.from("loans").insert(payload).select("id").single();
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  state.lastLoanId = data.id;
+  await fetchState();
   renderAll();
-  document.querySelector("#loanSuccess").textContent = `Prestamo registrado para ${newClient.name}. Ya aparece en historial y cobranzas.`;
+  document.querySelector("#loanSuccess").textContent = `Prestamo registrado para ${selectedPerson.full_name}. Ya aparece en historial y cobranzas.`;
   switchView("prestamos");
 }
 
-function collectInstallment(clientId) {
+async function collectInstallment(clientId) {
   if (!canOperate()) {
     return;
   }
@@ -547,20 +549,32 @@ function collectInstallment(clientId) {
     return;
   }
 
-  client.paid += 1;
-  client.status = client.paid >= client.installments ? "cancelado" : "al dia";
-  state.payments.unshift({
-    id: Date.now(),
-    clientId,
+  const newPaid = client.paid + 1;
+  const newStatus = newPaid >= client.installments ? "cancelado" : "al dia";
+
+  const { error: updateError } = await sb
+    .from("loans")
+    .update({ installments_paid: newPaid, status: newStatus })
+    .eq("id", clientId);
+  if (updateError) {
+    console.error(updateError);
+    return;
+  }
+
+  const { error: paymentError } = await sb.from("payments").insert({
+    loan_id: clientId,
     amount: installmentValue(client),
-    installment: client.paid,
-    date: new Date().toISOString(),
+    installment_number: newPaid,
   });
-  saveState();
+  if (paymentError) {
+    console.error(paymentError);
+  }
+
+  await fetchState();
   renderAll();
 }
 
-function markUncollectible(clientId) {
+async function markUncollectible(clientId) {
   if (!canOperate()) {
     return;
   }
@@ -575,12 +589,17 @@ function markUncollectible(clientId) {
     return;
   }
 
-  client.status = "incobrable";
-  saveState();
+  const { error } = await sb.from("loans").update({ status: "incobrable" }).eq("id", clientId);
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  await fetchState();
   renderAll();
 }
 
-function resetDemo() {
+async function resetDemo() {
   if (state.role !== "superadmin") {
     return;
   }
@@ -590,11 +609,15 @@ function resetDemo() {
     return;
   }
 
-  state.clients = cloneSeedClients();
-  state.payments = seedPayments();
-  state.programEnabled = true;
+  const { error } = await sb.rpc("reset_demo");
+  if (error) {
+    console.error(error);
+    alert(`No se pudo reiniciar la demo: ${error.message}`);
+    return;
+  }
+
   state.lastLoanId = null;
-  saveState();
+  await fetchState();
   renderAll();
 }
 
@@ -625,33 +648,50 @@ function renderAll() {
   updateSimulator();
 }
 
-function login(event) {
+async function login(event) {
   event.preventDefault();
   const user = document.querySelector("#loginUser").value.trim().toLowerCase();
   const password = document.querySelector("#loginPassword").value;
-  const demoUser = DEMO_USERS[user];
+  const email = LOGIN_EMAILS[user];
 
-  if (!demoUser || demoUser.password !== password) {
+  if (!email) {
     document.querySelector("#loginError").textContent = "Usuario o contrasena incorrectos.";
     return;
   }
 
-  if (demoUser.role !== "superadmin" && !state.programEnabled) {
-    document.querySelector("#loginError").textContent = "El sistema esta desactivado. Contacta al administrador para reactivarlo.";
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error || !data.session) {
+    document.querySelector("#loginError").textContent = "Usuario o contrasena incorrectos.";
     return;
   }
 
-  state.role = demoUser.role;
+  await loadSessionRole();
+
+  if (!state.role) {
+    document.querySelector("#loginError").textContent = "Esta cuenta no tiene un rol asignado en el sistema.";
+    await sb.auth.signOut();
+    return;
+  }
+
+  await fetchState();
+
+  if (state.role !== "superadmin" && !state.programEnabled) {
+    document.querySelector("#loginError").textContent = "El sistema esta desactivado. Contacta al administrador para reactivarlo.";
+    await sb.auth.signOut();
+    state.role = null;
+    renderAll();
+    return;
+  }
+
   document.querySelector("#loginError").textContent = "";
   document.querySelector("#loginForm").reset();
-  saveState();
   renderAll();
   switchView("dashboard");
 }
 
-function logout() {
+async function logout() {
+  await sb.auth.signOut();
   state.role = null;
-  saveState();
   renderAll();
 }
 
@@ -663,9 +703,16 @@ document.querySelector("#loginForm").addEventListener("submit", login);
 document.querySelector("#logoutUser").addEventListener("click", logout);
 document.querySelector("#logoutUserTop").addEventListener("click", logout);
 
-document.querySelector("#programEnabled").addEventListener("change", (event) => {
-  state.programEnabled = event.target.checked;
-  saveState();
+document.querySelector("#programEnabled").addEventListener("change", async (event) => {
+  const enabled = event.target.checked;
+  const { error } = await sb.from("settings").update({ program_enabled: enabled, updated_at: new Date().toISOString() }).eq("id", 1);
+  if (error) {
+    console.error(error);
+    event.target.checked = state.programEnabled;
+    return;
+  }
+
+  state.programEnabled = enabled;
   renderAll();
 });
 
@@ -698,5 +745,21 @@ document.querySelector("#collectionsTable").addEventListener("click", (event) =>
   }
 });
 
-setDefaultDate();
-renderAll();
+async function init() {
+  setDefaultDate();
+
+  const {
+    data: { session },
+  } = await sb.auth.getSession();
+
+  if (session) {
+    await loadSessionRole();
+    if (state.role) {
+      await fetchState();
+    }
+  }
+
+  renderAll();
+}
+
+init();

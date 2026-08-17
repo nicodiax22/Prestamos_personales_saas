@@ -196,15 +196,17 @@ Movimientos de caja para controlar entradas y salidas.
 
 ## Etapas de implementacion
 
-### Etapa 1
+### Etapa 1 (implementado)
 
-- Crear proyecto Supabase.
-- Crear tablas.
-- Migrar los 20 clientes de demo como seed.
-- Conectar login.
-- Crear roles system_admin y owner_admin.
-- Agregar control `program_enabled` por cuenta.
-- Leer clientes, prestamos y cuotas desde la base real.
+- [x] Crear proyecto Supabase.
+- [x] Crear tablas (`profiles`, `settings`, `clients`, `loans`, `payments` — ver `supabase/migrations/0001_init.sql`).
+- [x] Migrar los 20 clientes de demo como seed.
+- [x] Conectar login (Supabase Auth, ver `supabase-client.js` y `app.js`).
+- [x] Crear roles system_admin y owner_admin (tabla `profiles`, ver `supabase/migrations/0002_profiles.sql`).
+- [x] Agregar control `program_enabled` (tabla `settings`, singleton).
+- [x] Leer clientes, prestamos y cuotas desde la base real.
+
+Simplificaciones respecto al diseno original: no hay tabla `installments` separada (las cuotas se resumen en `loans.installment_count` / `installments_paid`, igual que en la demo original) ni `tenants` (una sola cuenta/negocio por ahora). `cash_movements` queda para Etapa 3.
 
 ### Etapa 2
 

@@ -20,6 +20,23 @@ Prototipo responsive para presentar un sistema de gestion de prestamos personale
 - Persistencia local en el navegador para hacer pruebas reales sin backend.
 - Layout responsive para celular.
 - Confirmacion antes de reiniciar la demo o dar de baja un prestamo, para evitar perder datos por error.
+- Backend real con Supabase: autenticacion (Auth) y datos (Postgres) en vez de localStorage.
+
+## Backend (Supabase)
+
+La app se conecta a un proyecto de Supabase real. Ver `supabase-client.js` para la URL y la anon key (publica, segura para el frontend), y `supabase/migrations/` para el esquema.
+
+Para levantar un proyecto nuevo desde cero:
+
+1. Crear el proyecto en [supabase.com](https://supabase.com).
+2. Correr `supabase/migrations/0001_init.sql` en el SQL Editor del proyecto (crea tablas, RLS, funciones y carga los 20 clientes de demo).
+3. Crear los 2 usuarios en Authentication > Users (con "Auto Confirm User" activado):
+   - `nicodiax22@gmail.com` -> se le asigna el rol `system_admin`.
+   - `duenio@creditosimple.demo` -> se le asigna el rol `owner_admin`.
+4. Correr `supabase/migrations/0002_profiles.sql` para asignarles el rol.
+5. Actualizar `SUPABASE_URL` y `SUPABASE_ANON_KEY` en `supabase-client.js` con los datos de Project Settings > API.
+
+El login de la UI sigue pidiendo "usuario" (`nicolas` / `duenio`) por compatibilidad visual, pero autentica contra Supabase Auth usando el email real mapeado en `LOGIN_EMAILS` (`app.js`).
 
 ## Como verlo
 
