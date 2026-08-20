@@ -115,7 +115,10 @@
                 <p class="eyebrow">Base inicial</p>
                 <h2 id="clientsTitle">20 clientes cargados</h2>
               </div>
-              <input class="search" id="clientSearch" type="search" placeholder="Buscar cliente, DNI o telefono" />
+              <div class="client-toolbar">
+                <input class="search" id="clientSearch" type="search" placeholder="Buscar cliente, DNI o telefono" />
+                <button class="primary-button" type="button" id="openClientModal">Nuevo cliente</button>
+              </div>
             </div>
             <div class="client-grid" id="clientGrid"></div>
           </div>
@@ -212,6 +215,16 @@
               </div>
             </div>
             <div class="writeoff-list" id="writeOffList"></div>
+          </section>
+
+          <section class="panel payments-history-panel">
+            <div class="panel-header compact">
+              <div>
+                <p class="eyebrow">Historial</p>
+                <h2>Cobros registrados</h2>
+              </div>
+            </div>
+            <div class="payments-history" id="paymentsHistory"></div>
           </section>
         </section>
 

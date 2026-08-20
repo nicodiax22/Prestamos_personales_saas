@@ -21,6 +21,8 @@ const DB_ROLE_TO_APP_ROLE = {
   owner_admin: "owner",
 };
 
+const PAYMENT_PROOF_STORAGE_KEY = "credito-simple-payment-proofs-v1";
+
 let state = {
   role: null,
   programEnabled: true,
@@ -29,6 +31,15 @@ let state = {
   people: [],
   lastLoanId: null,
 };
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
 const currency = new Intl.NumberFormat("es-AR", {
   style: "currency",
@@ -93,6 +104,24 @@ function debtorLink(token) {
   return url.toString();
 }
 
+function loadPaymentProofs() {
+  try {
+    return JSON.parse(localStorage.getItem(PAYMENT_PROOF_STORAGE_KEY) ?? "{}");
+  } catch {
+    return {};
+  }
+}
+
+function savePaymentProof(paymentId, proof) {
+  if (!paymentId || !proof) {
+    return;
+  }
+
+  const proofs = loadPaymentProofs();
+  proofs[paymentId] = proof;
+  localStorage.setItem(PAYMENT_PROOF_STORAGE_KEY, JSON.stringify(proofs));
+}
+
 async function setButtonBusy(button, busyLabel, task) {
   if (!button) {
     return task();
@@ -129,25 +158,28 @@ function mapLoanRow(row) {
     paid: row.installments_paid,
     dueDay: row.due_day,
     firstDue: row.first_due_date,
+    publicToken: row.public_token,
     createdAt: row.created_at,
   };
 }
 
 function mapPaymentRow(row) {
+  const proofs = loadPaymentProofs();
   return {
     id: row.id,
     clientId: row.loan_id,
     amount: Number(row.amount),
     installment: row.installment_number,
     date: row.payment_date,
+    proof: proofs[row.id] ?? null,
   };
 }
 
 async function fetchState() {
   const [{ data: loanRows, error: loanError }, { data: paymentRows }, { data: peopleRows }, { data: settingsRow }] = await Promise.all([
     sb.from("loans").select("*, clients(full_name, dni, phone, zone)").order("id", { ascending: false }),
-    sb.from("payments").select("*"),
-    sb.from("clients").select("id, full_name").order("full_name"),
+    sb.from("payments").select("*").order("payment_date", { ascending: false }),
+    sb.from("clients").select("id, full_name, dni, phone, zone, created_at").order("full_name"),
     sb.from("settings").select("program_enabled").eq("id", 1).single(),
   ]);
 
@@ -271,6 +303,7 @@ function updateRoleUi() {
   document.querySelectorAll("#loanForm input, #loanForm select, #loanForm button").forEach((field) => {
     field.disabled = !canOperate();
   });
+  document.querySelector("#openClientModal").disabled = !canOperate();
 
   if (!canOperate()) {
     switchView("dashboard");
@@ -403,33 +436,59 @@ function loanStatusLabel(client) {
   return "Prestamo activo";
 }
 
-function renderClients(list = activeClients()) {
-  document.querySelector("#clientsTitle").textContent = `${activeClients().length} clientes cargados`;
+function latestLoanForPerson(personId) {
+  return activeClients().find((loan) => loan.clientId === personId) ?? null;
+}
+
+function renderClients(list = state.people) {
+  document.querySelector("#clientsTitle").textContent = `${state.people.length} clientes cargados`;
   document.querySelector("#clientGrid").innerHTML = list
-    .map(
-      (client) => `
+    .map((person) => {
+      const loan = latestLoanForPerson(person.id);
+      const status = loan?.status ?? "al dia";
+      const loanSummary = loan
+        ? `<strong>${currency.format(loan.amount)} -> ${currency.format(totalToReturn(loan))}</strong>`
+        : `<strong>Sin prestamo activo</strong>`;
+      const progress = loan ? (loan.paid / loan.installments) * 100 : 0;
+      const installmentText = loan ? `Cuotas pagas: ${loan.paid}/${loan.installments}` : "Cliente disponible para nuevo prestamo";
+
+      return `
         <article class="client-card">
           <header>
-            <h3>${client.name}</h3>
-            <span class="status ${statusClass[client.status]}">${client.status}</span>
+            <h3>${escapeHtml(person.full_name)}</h3>
+            <span class="status ${statusClass[status]}">${status}</span>
           </header>
           <div class="client-data">
-            <span>DNI ${client.dni}</span>
-            <span>${client.phone}</span>
-            <span>${client.zone}</span>
+            <span>DNI ${escapeHtml(person.dni ?? "Sin DNI")}</span>
+            <span>${escapeHtml(person.phone ?? "Sin telefono")}</span>
+            <span>${escapeHtml(person.zone ?? "Sin zona")}</span>
           </div>
           <div>
-            <div class="item-subtitle">${loanStatusLabel(client)}</div>
-            <strong>${currency.format(client.amount)} -> ${currency.format(totalToReturn(client))}</strong>
+            <div class="item-subtitle">${loan ? loanStatusLabel(loan) : "Sin prestamo activo"}</div>
+            ${loanSummary}
           </div>
           <div class="progress">
-            <span style="width: ${(client.paid / client.installments) * 100}%"></span>
+            <span style="width: ${progress}%"></span>
           </div>
-          <div class="item-subtitle">Cuotas pagas: ${client.paid}/${client.installments}</div>
+          <div class="item-subtitle">${installmentText}</div>
+          <div class="card-actions">
+            <button class="ghost-button small" data-edit-client="${person.id}" type="button" ${!canOperate() ? "disabled" : ""}>Editar</button>
+            <button class="ghost-button small danger" data-delete-client="${person.id}" type="button" ${!canOperate() ? "disabled" : ""}>Eliminar</button>
+          </div>
         </article>
-      `,
-    )
+      `;
+    })
     .join("");
+}
+
+function renderClientDirectory() {
+  const query = document.querySelector("#clientSearch").value.toLowerCase().trim();
+  const list = query
+    ? state.people.filter((person) =>
+        [person.full_name, person.dni, person.phone, person.zone].some((value) => String(value ?? "").toLowerCase().includes(query)),
+      )
+    : state.people;
+  renderClients(list);
 }
 
 function renderCollections() {
@@ -491,6 +550,36 @@ function renderCollections() {
         )
         .join("")
     : `<div class="empty-state">No hay prestamos dados de baja.</div>`;
+}
+
+function renderPaymentHistory() {
+  document.querySelector("#paymentsHistory").innerHTML = state.payments.length
+    ? state.payments
+        .slice(0, 8)
+        .map((payment) => {
+          const loan = state.clients.find((item) => item.id === payment.clientId);
+          const proof = payment.proof?.dataUrl
+            ? `<button class="proof-thumb" type="button" data-proof="${payment.id}" aria-label="Ver comprobante de ${escapeHtml(loan?.name ?? "cliente")}">
+                <img src="${payment.proof.dataUrl}" alt="Comprobante adjunto" />
+              </button>`
+            : `<span class="item-subtitle">Sin imagen</span>`;
+
+          return `
+            <article class="payment-history-row">
+              <div>
+                <div class="item-title">${escapeHtml(loan?.name ?? "Prestamo eliminado")}</div>
+                <div class="item-subtitle">${new Date(payment.date).toLocaleString("es-AR")} · cuota ${payment.installment}</div>
+              </div>
+              <strong>${currency.format(payment.amount)}</strong>
+              <div>
+                <div class="item-subtitle">Comprobante</div>
+                ${proof}
+              </div>
+            </article>
+          `;
+        })
+        .join("")
+    : `<div class="empty-state">Todavia no hay cobros registrados.</div>`;
 }
 
 function renderLoanHistory() {
@@ -625,6 +714,282 @@ async function createLoan(event) {
   });
 }
 
+function showClientForm(person = null) {
+  return new Promise((resolve) => {
+    const root = document.querySelector("#modalRoot");
+    root.innerHTML = `
+      <div class="modal-backdrop">
+        <form class="modal-box wide client-modal-form" role="dialog" aria-modal="true">
+          <div class="modal-title-row">
+            <div>
+              <p class="eyebrow">Gestion de cliente</p>
+              <h2>${person ? "Editar cliente" : "Nuevo cliente"}</h2>
+            </div>
+            <button type="button" class="ghost-button small" data-action="cancel">Cerrar</button>
+          </div>
+          <div class="form-grid">
+            <label>
+              Nombre completo
+              <input name="full_name" type="text" value="${escapeHtml(person?.full_name ?? "")}" required />
+            </label>
+            <label>
+              DNI
+              <input name="dni" type="text" value="${escapeHtml(person?.dni ?? "")}" required />
+            </label>
+            <label>
+              Telefono
+              <input name="phone" type="tel" value="${escapeHtml(person?.phone ?? "")}" required />
+            </label>
+            <label>
+              Zona
+              <input name="zone" type="text" value="${escapeHtml(person?.zone ?? "")}" required />
+            </label>
+          </div>
+          <p class="login-error" data-error aria-live="polite"></p>
+          <div class="modal-actions">
+            <button type="button" class="ghost-button" data-action="cancel">Cancelar</button>
+            <button type="submit" class="primary-button">Guardar cliente</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    const close = (result) => {
+      root.innerHTML = "";
+      resolve(result);
+    };
+
+    const form = root.querySelector("form");
+    form.querySelector("input").focus();
+    root.querySelectorAll('[data-action="cancel"]').forEach((button) => button.addEventListener("click", () => close(null)));
+    root.querySelector(".modal-backdrop").addEventListener("click", (event) => {
+      if (event.target.classList.contains("modal-backdrop")) {
+        close(null);
+      }
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      const payload = {
+        full_name: String(formData.get("full_name") ?? "").trim(),
+        dni: String(formData.get("dni") ?? "").trim(),
+        phone: String(formData.get("phone") ?? "").trim(),
+        zone: String(formData.get("zone") ?? "").trim(),
+      };
+
+      if (!payload.full_name || !payload.dni || !payload.phone || !payload.zone) {
+        form.querySelector("[data-error]").textContent = "Completa nombre, DNI, telefono y zona.";
+        return;
+      }
+
+      close(payload);
+    });
+  });
+}
+
+async function openClientModal(personId = null) {
+  if (!canOperate()) {
+    return;
+  }
+
+  const person = personId ? state.people.find((item) => item.id === personId) : null;
+  if (personId && !person) {
+    return;
+  }
+
+  const payload = await showClientForm(person);
+  if (!payload) {
+    return;
+  }
+
+  const request = person
+    ? sb.from("clients").update(payload).eq("id", person.id)
+    : sb.from("clients").insert(payload);
+  const { error } = await request;
+  if (error) {
+    console.error(error);
+    showToast("No se pudo guardar el cliente. Revisa permisos o intenta de nuevo.", "danger");
+    return;
+  }
+
+  await fetchState();
+  renderAll();
+  showToast(person ? "Cliente actualizado." : "Cliente creado.", "good");
+}
+
+async function deleteClient(personId) {
+  if (!canOperate()) {
+    return;
+  }
+
+  const person = state.people.find((item) => item.id === personId);
+  if (!person) {
+    return;
+  }
+
+  const hasLoans = state.clients.some((loan) => loan.clientId === personId);
+  const confirmed = await showConfirm(
+    hasLoans
+      ? `Eliminar a <strong>${person.full_name}</strong>? Tambien se eliminaran sus prestamos y cobros asociados. Esta accion no se puede deshacer.`
+      : `Eliminar a <strong>${person.full_name}</strong>? Esta accion no se puede deshacer.`,
+    { danger: true, confirmLabel: "Eliminar cliente" },
+  );
+  if (!confirmed) {
+    return;
+  }
+
+  const { error } = await sb.from("clients").delete().eq("id", personId);
+  if (error) {
+    console.error(error);
+    showToast("No se pudo eliminar el cliente. Revisa permisos o intenta de nuevo.", "danger");
+    return;
+  }
+
+  await fetchState();
+  renderAll();
+  showToast("Cliente eliminado.", "danger");
+}
+
+function openPaymentQrPage(client) {
+  const amount = currency.format(installmentValue(client));
+  const accountLink = client.publicToken ? debtorLink(client.publicToken) : window.location.href;
+  const qrSeed = `${client.id}-${client.paid + 1}-${Math.round(installmentValue(client))}`;
+  const dots = Array.from({ length: 81 }, (_, index) => {
+    const active = (qrSeed.charCodeAt(index % qrSeed.length) + index * 7) % 3 !== 0;
+    return `<span class="${active ? "active" : ""}"></span>`;
+  }).join("");
+  const html = `
+    <!doctype html>
+    <html lang="es">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>QR de cobro - ${escapeHtml(client.name)}</title>
+        <style>
+          body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f7f9; font-family: Inter, Arial, sans-serif; color: #17202a; }
+          main { width: min(420px, calc(100vw - 32px)); padding: 24px; border: 1px solid #dce4ea; border-radius: 8px; background: #fff; box-shadow: 0 18px 50px rgba(18,32,44,.12); text-align: center; }
+          h1 { margin: 0 0 6px; font-size: 24px; }
+          p { margin: 0 0 16px; color: #62717f; }
+          .qr { width: min(260px, 76vw); aspect-ratio: 1; display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; margin: 18px auto; padding: 16px; border: 8px solid #17202a; background: #fff; }
+          .qr span { border-radius: 3px; background: #fff; }
+          .qr span.active { background: #17202a; }
+          strong { display: block; font-size: 28px; }
+          small { display: block; margin-top: 10px; color: #62717f; word-break: break-all; }
+        </style>
+      </head>
+      <body>
+        <main>
+          <h1>${escapeHtml(client.name)}</h1>
+          <p>Cuota ${client.paid + 1}/${client.installments}</p>
+          <div class="qr">${dots}</div>
+          <strong>${amount}</strong>
+          <small>${escapeHtml(accountLink)}</small>
+        </main>
+      </body>
+    </html>
+  `;
+  const qrWindow = window.open("", "_blank", "width=480,height=680");
+  if (qrWindow) {
+    qrWindow.document.write(html);
+    qrWindow.document.close();
+  }
+}
+
+function showPaymentConfirm(client) {
+  return new Promise((resolve) => {
+    const root = document.querySelector("#modalRoot");
+    let proof = null;
+    root.innerHTML = `
+      <div class="modal-backdrop">
+        <div class="modal-box payment-modal" role="alertdialog" aria-modal="true">
+          <div class="modal-title-row">
+            <div>
+              <p class="eyebrow">Confirmacion requerida</p>
+              <h2>Confirmar cobro</h2>
+            </div>
+          </div>
+          <p class="warning-copy">Vas a validar un pago y actualizar la cuota del cliente. Esta accion no se puede deshacer.</p>
+          <div class="payment-summary">
+            <div><span>Cliente</span><strong>${escapeHtml(client.name)}</strong></div>
+            <div><span>Cuota</span><strong>${client.paid + 1}/${client.installments}</strong></div>
+            <div><span>Monto</span><strong>${currency.format(installmentValue(client))}</strong></div>
+          </div>
+          <div class="payment-proof-box">
+            <div>
+              <strong>Comprobante QR</strong>
+              <p>Adjunta una imagen o saca una foto al QR/pago del cliente antes de confirmar.</p>
+            </div>
+            <div class="payment-proof-actions">
+              <button class="ghost-button" type="button" data-action="open-qr">Abrir QR</button>
+              <label class="ghost-button file-button" for="paymentProofInput">Adjuntar foto</label>
+              <input id="paymentProofInput" type="file" accept="image/*" capture="environment" />
+            </div>
+            <div class="payment-proof-preview empty" data-proof-preview>Sin imagen adjunta</div>
+            <p class="payment-proof-error" data-proof-error aria-live="polite"></p>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="ghost-button" data-action="cancel">Cancelar</button>
+            <button type="button" class="primary-button danger" data-action="confirm">Confirmar pago</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const close = (result) => {
+      root.innerHTML = "";
+      resolve(result);
+    };
+    const preview = root.querySelector("[data-proof-preview]");
+    const error = root.querySelector("[data-proof-error]");
+
+    root.querySelector('[data-action="open-qr"]').addEventListener("click", () => openPaymentQrPage(client));
+    root.querySelector("#paymentProofInput").addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (!file) {
+        proof = null;
+        preview.className = "payment-proof-preview empty";
+        preview.textContent = "Sin imagen adjunta";
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        error.textContent = "El comprobante tiene que ser una imagen.";
+        return;
+      }
+
+      if (file.size > 2.5 * 1024 * 1024) {
+        error.textContent = "La imagen es muy pesada para guardar en esta demo.";
+        event.target.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        proof = {
+          name: file.name || "foto-qr.jpg",
+          type: file.type,
+          dataUrl: reader.result,
+          capturedAt: new Date().toISOString(),
+        };
+        error.textContent = "";
+        preview.className = "payment-proof-preview";
+        preview.innerHTML = `
+          <img src="${proof.dataUrl}" alt="Comprobante seleccionado" />
+          <span>${escapeHtml(proof.name)}</span>
+        `;
+      });
+      reader.readAsDataURL(file);
+    });
+    root.querySelector('[data-action="cancel"]').addEventListener("click", () => close({ confirmed: false }));
+    root.querySelector('[data-action="confirm"]').addEventListener("click", () => close({ confirmed: true, proof }));
+    root.querySelector(".modal-backdrop").addEventListener("click", (event) => {
+      if (event.target.classList.contains("modal-backdrop")) {
+        close({ confirmed: false });
+      }
+    });
+  });
+}
+
 async function collectInstallment(clientId, button) {
   if (!canOperate()) {
     return;
@@ -632,6 +997,11 @@ async function collectInstallment(clientId, button) {
 
   const client = state.clients.find((item) => item.id === clientId);
   if (!client || client.paid >= client.installments || client.status === "incobrable") {
+    return;
+  }
+
+  const confirmation = await showPaymentConfirm(client);
+  if (!confirmation.confirmed) {
     return;
   }
 
@@ -649,13 +1019,19 @@ async function collectInstallment(clientId, button) {
       return;
     }
 
-    const { error: paymentError } = await sb.from("payments").insert({
-      loan_id: clientId,
-      amount: installmentValue(client),
-      installment_number: newPaid,
-    });
+    const { data: paymentData, error: paymentError } = await sb
+      .from("payments")
+      .insert({
+        loan_id: clientId,
+        amount: installmentValue(client),
+        installment_number: newPaid,
+      })
+      .select("id")
+      .single();
     if (paymentError) {
       console.error(paymentError);
+    } else {
+      savePaymentProof(paymentData?.id, confirmation.proof);
     }
 
     await fetchState();
@@ -744,8 +1120,9 @@ function renderAll() {
   renderMetrics();
   renderDueList();
   renderRiskList();
-  renderClients();
+  renderClientDirectory();
   renderCollections();
+  renderPaymentHistory();
   renderLoanHistory();
   populateLoanClients();
   updateSimulator();
@@ -828,13 +1205,10 @@ document.querySelector("#programEnabled").addEventListener("change", async (even
 });
 
 document.querySelector("#openLoan").addEventListener("click", () => switchView("prestamos"));
+document.querySelector("#openClientModal").addEventListener("click", () => openClientModal());
 
 document.querySelector("#clientSearch").addEventListener("input", (event) => {
-  const query = event.target.value.toLowerCase().trim();
-  const filtered = activeClients().filter((client) =>
-    [client.name, client.dni, client.phone, client.zone].some((value) => value.toLowerCase().includes(query)),
-  );
-  renderClients(filtered);
+  renderClientDirectory();
 });
 
 document.querySelectorAll("#loanForm input, #loanForm select").forEach((input) => {
@@ -843,6 +1217,18 @@ document.querySelectorAll("#loanForm input, #loanForm select").forEach((input) =
 
 document.querySelector("#loanForm").addEventListener("submit", createLoan);
 document.querySelector("#resetDemo").addEventListener("click", (event) => resetDemo(event.currentTarget));
+document.querySelector("#clientGrid").addEventListener("click", (event) => {
+  const editButton = event.target.closest("[data-edit-client]");
+  if (editButton) {
+    openClientModal(Number(editButton.dataset.editClient));
+    return;
+  }
+
+  const deleteButton = event.target.closest("[data-delete-client]");
+  if (deleteButton) {
+    deleteClient(Number(deleteButton.dataset.deleteClient));
+  }
+});
 document.querySelector("#collectionsTable").addEventListener("click", (event) => {
   const collectButton = event.target.closest("[data-collect]");
   if (collectButton) {
@@ -853,6 +1239,17 @@ document.querySelector("#collectionsTable").addEventListener("click", (event) =>
   const writeoffButton = event.target.closest("[data-writeoff]");
   if (writeoffButton) {
     markUncollectible(Number(writeoffButton.dataset.writeoff), writeoffButton);
+  }
+});
+document.querySelector("#paymentsHistory").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-proof]");
+  if (!button) {
+    return;
+  }
+
+  const payment = state.payments.find((item) => item.id === Number(button.dataset.proof));
+  if (payment?.proof?.dataUrl) {
+    window.open(payment.proof.dataUrl, "_blank");
   }
 });
 
